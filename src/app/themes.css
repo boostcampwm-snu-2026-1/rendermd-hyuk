@@ -107,6 +107,89 @@ body {
 }
 
 /*
+ * Theme-aware scrollbars.
+ *
+ * Thumb color derives from the current --fg via color-mix so it
+ * automatically tracks each theme without per-theme overrides:
+ *   - light  → translucent dark    → near-invisible on white
+ *   - dark   → translucent light   → near-invisible on near-black
+ *   - sepia  → translucent brown   → near-invisible on cream
+ * High-contrast opts out and keeps the browser default scrollbar so
+ * the affordance stays unambiguous for that audience.
+ *
+ * Two rules per browser family:
+ *   - Firefox / Edge / future Chrome: `scrollbar-width` + `scrollbar-color`
+ *   - Safari / current Chrome:        `::-webkit-scrollbar*`
+ */
+:root {
+  --scrollbar-thumb: color-mix(in srgb, var(--fg) 18%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--fg) 36%, transparent);
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+[data-print='target'],
+.cm-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+[data-print='target']::-webkit-scrollbar,
+.cm-scroller::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-print='target']::-webkit-scrollbar-track,
+.cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-print='target']::-webkit-scrollbar-thumb,
+.cm-scroller::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  /* Inset border creates the "pill" inside the track gutter so the
+     thumb looks slimmer than the scrollbar metric without sacrificing
+     hit-target width. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+[data-print='target']::-webkit-scrollbar-thumb:hover,
+.cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+[data-print='target']::-webkit-scrollbar-corner,
+.cm-scroller::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+[data-theme='hc'] {
+  /* High-contrast users need an unambiguous scrollbar. Don't override
+     the platform default. */
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+[data-theme='hc'] [data-print='target'],
+[data-theme='hc'] .cm-scroller {
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+[data-theme='hc'] [data-print='target']::-webkit-scrollbar-thumb,
+[data-theme='hc'] .cm-scroller::-webkit-scrollbar-thumb {
+  background: var(--fg);
+  border: none;
+}
+
+/*
  * Code block highlighter overrides per theme.
  *
  * github.css ships LIGHT-theme tokens. We override the surface (bg/text)
