@@ -1,0 +1,122 @@
+/**
+ * Canonicalize "compact" block math so remark-math actually recognizes it.
+ *
+ * Background:
+ *   remark-math (micromark-extension-math) treats the opening `$$` as a
+ *   fence whose remainder of the line is an info string, and expects the
+ *   closing `$$` to sit on its own line (or after meta-only content).
+ *
+ *   That means this — a common shape in LLM output — parses incorrectly:
+ *
+ *       $$\begin{aligned}
+ *       x &= 1 \\
+ *       y &= 2
+ *       \end{aligned}$$
+ *
+ *   `\begin{aligned}` is consumed as the info string, and
+ *   `\end{aligned}$$` is not a valid closing fence, so the math value
+ *   becomes `x &= 1 \\\ny &= 2\n\end{aligned}$$`. KaTeX then errors.
+ *
+ *   The canonical form remark-math wants:
+ *
+ *       $$
+ *       \begin{aligned}
+ *       x &= 1 \\
+ *       y &= 2
+ *       \end{aligned}
+ *       $$
+ *
+ * This preprocessor walks the markdown source, skipping fenced code blocks
+ * and inline-code spans, and rewrites compact `$$...$$` pairs (those that
+ * span newlines or contain a `\begin{...}` / `\end{...}` environment) into
+ * the canonical block form.
+ *
+ * What we DON'T touch:
+ *   - `$$short$$` on one line with no environment — leave as inline display.
+ *   - `$$...$$` inside fenced code blocks — that's literal content.
+ *   - `$$...$$` inside inline `code` spans — same.
+ */
+
+// Matches the start of a fenced code block: indent up to 3 spaces, then a
+// run of 3+ backticks or 3+ tildes. The first capture is the fence chars.
+const FENCE_OPEN = /^( {0,3})(`{3,}|~{3,})/;
+
+export function canonicalizeBlockMath(src: string): string {
+  // Phase 1: split the source into alternating code / non-code chunks. We
+  // honor fence length and char per CommonMark — a fence closes only when
+  // the matching char is repeated >= the open length.
+  const chunks: { kind: 'code' | 'text'; value: string }[] = [];
+  const lines = src.split('\n');
+  let i = 0;
+  let buf: string[] = [];
+
+  while (i < lines.length) {
+    const open = lines[i].match(FENCE_OPEN);
+    if (open) {
+      if (buf.length) {
+        chunks.push({ kind: 'text', value: buf.join('\n') });
+        buf = [];
+      }
+      const fenceChar = open[2][0];
+      const fenceMin = open[2].length;
+      const closeRe = new RegExp(`^ {0,3}${fenceChar === '`' ? '`' : '~'}{${fenceMin},}\\s*$`);
+      const block: string[] = [lines[i]];
+      i++;
+      while (i < lines.length) {
+        block.push(lines[i]);
+        if (closeRe.test(lines[i])) {
+          i++;
+          break;
+        }
+        i++;
+      }
+      chunks.push({ kind: 'code', value: block.join('\n') });
+      continue;
+    }
+    buf.push(lines[i]);
+    i++;
+  }
+  if (buf.length) chunks.push({ kind: 'text', value: buf.join('\n') });
+
+  return chunks.map((c) => (c.kind === 'code' ? c.value : transformTextChunk(c.value))).join('\n');
+}
+
+function transformTextChunk(text: string): string {
+  // Within a non-code region, also skip inline code spans (`...`) so we
+  // never touch a literal $$ inside backticks.
+  const parts: string[] = [];
+  const inlineCodeRe = /`+[^`\n]*`+/g;
+  let lastEnd = 0;
+  let m: RegExpExecArray | null;
+  while ((m = inlineCodeRe.exec(text))) {
+    parts.push(rewriteMath(text.slice(lastEnd, m.index)));
+    parts.push(m[0]);
+    lastEnd = m.index + m[0].length;
+  }
+  parts.push(rewriteMath(text.slice(lastEnd)));
+  return parts.join('');
+}
+
+// Non-greedy pair match of $$...$$ that can span newlines. The negative
+// lookbehind / lookahead prevent matching `$$$` runs, but in practice
+// LLM output uses exactly `$$`, so the simple form is fine.
+const BLOCK_MATH_PAIR = /\$\$([\s\S]+?)\$\$/g;
+const HAS_ENV = /\\(?:begin|end)\{/;
+
+function rewriteMath(segment: string): string {
+  return segment.replace(BLOCK_MATH_PAIR, (full, inner: string) => {
+    const hasNewline = inner.includes('\n');
+    const hasEnv = HAS_ENV.test(inner);
+    if (!hasNewline && !hasEnv) {
+      // Single-line, no env — leave as-is. May be inline display, which
+      // is its own quirk but not what this preprocessor is for.
+      return full;
+    }
+    // Strip whitespace at the boundaries; remark-math is whitespace-strict
+    // about the fence lines.
+    const trimmed = inner.replace(/^\s+|\s+$/g, '');
+    // Pad with blank lines so the math block is a separate root-level
+    // element even if it was previously glued to an adjacent paragraph.
+    return `\n\n$$\n${trimmed}\n$$\n\n`;
+  });
+}
