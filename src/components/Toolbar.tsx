@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Bold,
   Italic,
@@ -39,6 +39,13 @@ import styles from './Toolbar.module.css';
 interface ToolbarProps {
   view: EditorView | null;
   active?: ActiveMarks;
+  /**
+   * Externally-triggered dialog open, e.g. from the EditorPane keymap
+   * (Mod-K opens link). When set, the Toolbar opens the matching
+   * dialog and clears the request via `onConsumeOpenRequest`.
+   */
+  openRequest?: InsertKind | null;
+  onConsumeOpenRequest?: () => void;
 }
 
 type ToggleButtonSpec = {
@@ -62,8 +69,6 @@ type DialogButtonSpec = {
 
 type ButtonSpec = ToggleButtonSpec | DialogButtonSpec;
 
-// Grouped left-to-right by mental category: inline marks, headings,
-// lists, quote, insert. Order within a group follows visual frequency.
 const GROUPS: ButtonSpec[][] = [
   [
     {
@@ -186,11 +191,13 @@ const GROUPS: ButtonSpec[][] = [
       kind: 'dialog',
       icon: ImageIcon,
       label: 'Insert image',
-      shortcut: 'Ctrl+Shift+I',
+      shortcut: 'Ctrl+Shift+M',
       open: 'image',
     },
   ],
 ];
+
+const FLAT_BUTTONS = GROUPS.flat();
 
 function selectionText(view: EditorView | null): string {
   if (view == null) return '';
@@ -199,18 +206,69 @@ function selectionText(view: EditorView | null): string {
   return state.doc.sliceString(range.from, range.to);
 }
 
-export function Toolbar({ view, active = EMPTY_ACTIVE }: ToolbarProps) {
+export function Toolbar({
+  view,
+  active = EMPTY_ACTIVE,
+  openRequest,
+  onConsumeOpenRequest,
+}: ToolbarProps) {
   const disabled = view == null;
   const [openDialog, setOpenDialog] = useState<InsertKind | null>(null);
   const [initialText, setInitialText] = useState('');
 
-  const handleDialogSubmit = (url: string, text: string) => {
-    if (view != null) {
-      if (openDialog === 'link') insertLink(view, url, text);
-      else if (openDialog === 'image') insertImage(view, url, text);
+  // External keymap request (e.g. Mod-K from inside the editor): adopt
+  // it as the dialog open state, then signal the parent to clear so the
+  // request is one-shot.
+  useEffect(() => {
+    if (openRequest == null) return;
+    setInitialText(selectionText(view));
+    setOpenDialog(openRequest);
+    onConsumeOpenRequest?.();
+  }, [openRequest, view, onConsumeOpenRequest]);
+
+  const handleDialogSubmit = useCallback(
+    (url: string, text: string) => {
+      if (view != null) {
+        if (openDialog === 'link') insertLink(view, url, text);
+        else if (openDialog === 'image') insertImage(view, url, text);
+      }
+      setOpenDialog(null);
+    },
+    [openDialog, view],
+  );
+
+  // ─── Roving-tabindex toolbar a11y ──────────────────────────────────
+  // Only one button is in the tab order at a time. Arrow keys move
+  // the focus within the toolbar. Home/End jump to the ends. Matches
+  // the WAI-ARIA Authoring Practices for a horizontal toolbar.
+  const [focusIndex, setFocusIndex] = useState(0);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const handleToolbarKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const total = FLAT_BUTTONS.length;
+    let next: number | null = null;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = (focusIndex + 1) % total;
+        break;
+      case 'ArrowLeft':
+        next = (focusIndex - 1 + total) % total;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = total - 1;
+        break;
+      default:
+        return;
     }
-    setOpenDialog(null);
+    event.preventDefault();
+    setFocusIndex(next);
+    buttonRefs.current[next]?.focus();
   };
+
+  let flatIndex = -1;
 
   return (
     <>
@@ -220,21 +278,29 @@ export function Toolbar({ view, active = EMPTY_ACTIVE }: ToolbarProps) {
         aria-label="Formatting"
         aria-disabled={disabled || undefined}
         data-print="hide"
+        onKeyDown={handleToolbarKeyDown}
       >
         {GROUPS.map((group, groupIndex) => (
           <div key={groupIndex} className={styles.group} role="group">
             {group.map((b) => {
+              flatIndex += 1;
+              const idx = flatIndex;
               const isActive = b.kind === 'toggle' ? b.isActive(active) : false;
               const Icon = b.icon;
               return (
                 <button
                   key={b.key}
+                  ref={(el) => {
+                    buttonRefs.current[idx] = el;
+                  }}
                   type="button"
                   className={styles.button}
                   aria-label={b.label}
                   aria-pressed={b.kind === 'toggle' ? isActive : undefined}
                   disabled={disabled}
+                  tabIndex={focusIndex === idx ? 0 : -1}
                   title={`${b.label} (${b.shortcut})`}
+                  onFocus={() => setFocusIndex(idx)}
                   onMouseDown={(e) => {
                     // Prevent the button from stealing focus from the editor —
                     // if the editor loses focus, view.dispatch still works but
