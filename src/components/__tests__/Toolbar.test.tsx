@@ -18,6 +18,8 @@ vi.mock('@/lib/editor-commands', () => ({
   toggleOrderedList: vi.fn(),
   toggleTodo: vi.fn(),
   toggleQuote: vi.fn(),
+  insertLink: vi.fn(),
+  insertImage: vi.fn(),
 }));
 
 import { toggleBold, toggleHeading } from '@/lib/editor-commands';
@@ -27,11 +29,11 @@ function makeViewStub() {
 }
 
 describe('<Toolbar />', () => {
-  it('renders 11 grouped formatting buttons', () => {
+  it('renders 13 grouped formatting buttons', () => {
     render(<Toolbar view={null} />);
     const buttons = screen.getAllByRole('button');
-    // 4 inline + 3 headings + 3 list shapes + 1 quote = 11
-    expect(buttons).toHaveLength(11);
+    // 4 inline + 3 headings + 3 list shapes + 1 quote + 2 insert = 13
+    expect(buttons).toHaveLength(13);
   });
 
   it('all buttons are disabled until the EditorView ref is wired', () => {
