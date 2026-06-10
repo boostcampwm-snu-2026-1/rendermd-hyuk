@@ -316,8 +316,55 @@ html {
   color: var(--fg) !important;
 }
 
-/* Selection color tracks the accent across themes. */
+/*
+ * Selection color tracks the accent across themes. 40% blend reads as
+ * a clear tint in light / sepia, a visible band in dark, and stays
+ * unambiguous in HC.
+ *
+ * The editor needs explicit !important overrides because
+ * @codemirror/theme-one-dark (and the base lib for the light theme)
+ * inject `.cm-line ::selection { background-color: transparent !important }`
+ * to switch the selection rendering to a JS-painted .cm-selectionBackground
+ * layer. Their default fill is `highlight` (OS system color) which on
+ * white-themed setups is nearly invisible. We force both the native
+ * fallback AND the JS-painted layer to use our token so within-line
+ * drag selection actually shows.
+ */
 ::selection {
-  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
   color: inherit;
+}
+
+.cm-content ::selection,
+.cm-content :focus ::selection,
+.cm-line ::selection,
+.cm-line::selection {
+  background: color-mix(in srgb, var(--accent) 40%, transparent) !important;
+}
+
+.cm-selectionBackground,
+.cm-focused .cm-selectionBackground,
+.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: color-mix(in srgb, var(--accent) 40%, transparent) !important;
+}
+
+/* HC needs full-opacity selection so the band reads as a hard
+   foreground-vs-background contrast, not a pastel tint. */
+[data-theme='hc'] ::selection {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+[data-theme='hc'] .cm-content ::selection,
+[data-theme='hc'] .cm-content :focus ::selection,
+[data-theme='hc'] .cm-line ::selection,
+[data-theme='hc'] .cm-line::selection {
+  background: var(--accent) !important;
+  color: var(--accent-fg) !important;
+}
+
+[data-theme='hc'] .cm-selectionBackground,
+[data-theme='hc'] .cm-focused .cm-selectionBackground,
+[data-theme='hc'] .cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: var(--accent) !important;
 }
