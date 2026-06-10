@@ -37,6 +37,12 @@ const ThemeSwitcher = dynamic(
   { ssr: false },
 );
 
+// Same reason as ThemeSwitcher (controlled <select>).
+const MathAlignSwitcher = dynamic(
+  () => import('@/components/MathAlignSwitcher').then((m) => m.MathAlignSwitcher),
+  { ssr: false },
+);
+
 // Toolbar pulls 11 lucide-react icons (~25 kB) + the @codemirror/state
 // runtime (~12 kB) via editor-commands. Lazy-loading keeps the / route's
 // First Load JS within the perf budget — the toolbar isn't usable before
@@ -90,6 +96,7 @@ export default function Home() {
         </div>
         <div className={styles.toolbar}>
           <SaveStatusIndicator status={status} errorKind={errorKind} onRetry={retry} />
+          <MathAlignSwitcher />
           <ThemeSwitcher />
           <ExportButton />
         </div>
