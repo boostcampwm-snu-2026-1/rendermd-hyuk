@@ -14,6 +14,7 @@
     "build": "next build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:oxlint": "oxlint src/ scripts/",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,json,md,css,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,json,md,css,yml,yaml}\"",
@@ -57,6 +58,7 @@
     "husky": "^9.1.6",
     "jsdom": "^29.1.1",
     "lint-staged": "^17.0.5",
+    "oxlint": "^1.69.0",
     "playwright": "^1.60.0",
     "prettier": "^3.3.3",
     "rehype-stringify": "^10.0.1",
@@ -70,6 +72,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs}": [
+      "oxlint --fix",
       "prettier --write"
     ],
     "*.{json,md,css,yml,yaml}": [

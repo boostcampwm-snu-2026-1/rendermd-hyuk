@@ -60,7 +60,7 @@ export function getActiveMarks(state: EditorState): ActiveMarks {
   // the same precedence rule.
   const bullet = !todo && /^- (?!\[[ x]\] )/.test(lineText);
   const ordered = /^\d+\. /.test(lineText);
-  const quote = /^> /.test(lineText);
+  const quote = lineText.startsWith('> ');
 
   return { bold, italic, strike, inlineCode, heading, bullet, ordered, todo, quote };
 }
