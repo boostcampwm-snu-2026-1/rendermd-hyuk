@@ -25,6 +25,13 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      # Fast first-pass — oxlint is ~50-100× the speed of ESLint and
+      # catches the obvious mistakes. Running it before ESLint shaves CI
+      # time on the failure path; ESLint still runs after to catch the
+      # rules oxlint doesn't cover (TS-aware rules, jsx-a11y, etc.).
+      - name: Lint (oxlint fast pass)
+        run: pnpm lint:oxlint
+
       - name: Lint
         run: pnpm lint
 
@@ -33,6 +40,9 @@ jobs:
 
       - name: Test
         run: pnpm test:run
+
+      - name: Dead-code check (knip)
+        run: pnpm knip
 
       - name: Build (with perf budget)
         env:

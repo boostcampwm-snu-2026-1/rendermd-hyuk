@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["scripts/capture.ts", "scripts/capture-og.ts"],
+  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
+  "ignoreDependencies": ["eslint-config-next"]
+}
