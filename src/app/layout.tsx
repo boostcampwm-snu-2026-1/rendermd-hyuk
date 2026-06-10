@@ -5,6 +5,7 @@ import './globals.css';
 import './themes.css';
 import './print.css';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { MathAlignProvider } from '@/contexts/MathAlignContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const SITE_NAME = 'rendermd';
@@ -65,27 +66,35 @@ export const viewport: Viewport = {
   ],
 };
 
-// NOTE: storage key and theme literals are duplicated from
-// src/contexts/ThemeContext.tsx because this script runs before React loads
-// and cannot import TS modules. Keep them in sync.
-const themeInitScript = `(function(){try{var t=localStorage.getItem('rendermd:theme');if(t==='light'||t==='dark'||t==='sepia'||t==='hc'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
+// NOTE: storage keys and value literals are duplicated from
+// src/contexts/ThemeContext.tsx and MathAlignContext.tsx because this
+// script runs before React loads and cannot import TS modules. Keep
+// them in sync.
+const preReactInitScript = `(function(){try{
+  var t=localStorage.getItem('rendermd:theme');
+  if(t==='light'||t==='dark'||t==='sepia'||t==='hc'){document.documentElement.setAttribute('data-theme',t);}
+  var m=localStorage.getItem('rendermd:math-align');
+  if(m==='center'||m==='left'){document.documentElement.setAttribute('data-math-align',m);}
+}catch(e){}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: preReactInitScript }} />
       </head>
       <body>
         {/*
-         * ErrorBoundary deliberately sits OUTSIDE ThemeProvider: if the
+         * ErrorBoundary deliberately sits OUTSIDE the providers: if a
          * provider itself throws, the fallback still renders with sensible
          * colors because the inline script above has already applied
-         * [data-theme] on <html> before React mounts. The fallback CSS vars
-         * resolve against that.
+         * [data-theme] (and [data-math-align]) on <html> before React
+         * mounts. The fallback CSS vars resolve against that.
          */}
         <ErrorBoundary>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <MathAlignProvider>{children}</MathAlignProvider>
+          </ThemeProvider>
         </ErrorBoundary>
       </body>
     </html>
