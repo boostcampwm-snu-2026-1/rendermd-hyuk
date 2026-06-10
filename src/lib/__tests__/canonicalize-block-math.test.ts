@@ -56,11 +56,32 @@ $$`;
     expect(math[0].value).toBe('a + b\n= c');
   });
 
-  it('leaves single-line $$x$$ without an environment alone', () => {
-    // This is "inline display" math; remark-math doesn't parse it as a
-    // math node anyway, but we should not corrupt the source either.
+  it('leaves single-line $$x$$ mid-line alone (inline display)', () => {
+    // Mid-line $$x$$ is "inline display" math. remark-math doesn't
+    // parse it as a block math node, but we shouldn't corrupt the
+    // source either — the user might want literal $$ in prose.
     const src = `before $$E = mc^2$$ after`;
     expect(canonicalizeBlockMath(src)).toBe(src);
+  });
+
+  it('rewrites single-line $$x$$ alone on a line to block form', () => {
+    // The common LLM / user-paste shape. remark-math would otherwise
+    // miss it (single-line $$x$$ stays inline), so .katex-display
+    // never gets emitted and math-align has nothing to act on.
+    const src = `text before\n$$ E = mc^2 $$\ntext after`;
+    const out = canonicalizeBlockMath(src);
+    expect(out).toMatch(/\n\$\$\nE = mc\^2\n\$\$\n/);
+    const math = parseToMath(out);
+    expect(math).toHaveLength(1);
+    expect(math[0].value).toBe('E = mc^2');
+  });
+
+  it('rewrites single-line $$x$$ at start of input', () => {
+    const src = `$$E = mc^2$$\nafter`;
+    const out = canonicalizeBlockMath(src);
+    const math = parseToMath(out);
+    expect(math).toHaveLength(1);
+    expect(math[0].value).toBe('E = mc^2');
   });
 
   it('leaves inline $x$ math untouched', () => {
