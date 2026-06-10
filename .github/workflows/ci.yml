@@ -38,3 +38,45 @@ jobs:
         env:
           PERF_BUDGET_KB: 130
         run: pnpm exec tsx scripts/check-perf-budget.ts
+
+      # Cache Playwright browsers across runs (~120 MB) so most PRs
+      # don't pay the ~30s download.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Serve the BUILT static site and run the corpus harness against
+      # it — same code path users get from GH Pages. The CI build
+      # above runs without NEXT_PUBLIC_BASE_PATH (deploy.yml is what
+      # sets the production basePath), so out/ has root-relative paths
+      # and we can serve it as-is.
+      - name: Render corpus
+        run: |
+          pnpm dlx serve@14 out -l 4173 --no-clipboard > /tmp/serve.log 2>&1 &
+          SERVE_PID=$!
+          for i in $(seq 1 40); do
+            if curl -sf http://localhost:4173/ > /dev/null; then break; fi
+            sleep 0.5
+          done
+          SITE=http://localhost:4173/ pnpm exec tsx scripts/render-corpus.ts
+          STATUS=$?
+          kill $SERVE_PID 2>/dev/null || true
+          exit $STATUS
+
+      # Upload the corpus screenshots so reviewers can inspect what
+      # was rendered when something fails.
+      - name: Upload corpus screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpus-screenshots
+          path: docs/screenshots/corpus/
+          if-no-files-found: ignore
+          retention-days: 14
