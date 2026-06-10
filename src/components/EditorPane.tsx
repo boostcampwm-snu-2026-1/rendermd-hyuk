@@ -4,6 +4,7 @@ import CodeMirror, { type Extension } from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView, keymap } from '@codemirror/view';
+import { autocompletion } from '@codemirror/autocomplete';
 import {
   toggleBold,
   toggleItalic,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/editor-commands';
 import { getActiveMarks } from '@/lib/editor-active';
 import type { ActiveMarks } from '@/lib/editor-active-types';
+import { slashCompletionSource } from '@/lib/editor-slash-completions';
 import styles from './EditorPane.module.css';
 
 // Keyboard shortcuts mirror the toolbar button order. Inline marks use
@@ -41,7 +43,17 @@ const FORMAT_KEYMAP = keymap.of([
 //   2. With short content, no wrap = .cm-scroller has no overflow, so wheel
 //      events fall through to the .editor wrapper (overflow:hidden) and the
 //      trackpad feels dead. Wrapping keeps the scroller authoritative.
-const EXTENSIONS: Extension[] = [markdown(), EditorView.lineWrapping, FORMAT_KEYMAP];
+// `/` slash menu — autocomplete tooltip with block templates. `override`
+// replaces the default completion source so we don't get noisy
+// word-completions in prose mode; activateOnTyping keeps the popup live
+// as the user filters with /h, /li, etc.
+const SLASH_MENU = autocompletion({
+  override: [slashCompletionSource],
+  activateOnTyping: true,
+  closeOnBlur: true,
+});
+
+const EXTENSIONS: Extension[] = [markdown(), EditorView.lineWrapping, FORMAT_KEYMAP, SLASH_MENU];
 
 const BASIC_SETUP = {
   lineNumbers: true,
