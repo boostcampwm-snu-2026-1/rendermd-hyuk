@@ -2,10 +2,11 @@
 
 import { useMemo } from 'react';
 import CodeMirror, { type Extension } from '@uiw/react-codemirror';
-import { markdown } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView, keymap } from '@codemirror/view';
 import { autocompletion } from '@codemirror/autocomplete';
+import { mathDecorationPlugin } from '@/lib/editor-math-decoration';
 import {
   toggleBold,
   toggleBulletList,
@@ -110,7 +111,17 @@ export function EditorPane({
         },
       },
     ]);
-    return [markdown(), EditorView.lineWrapping, FORMAT_KEYMAP, SLASH_MENU, dialogKeys];
+    return [
+      // base: markdownLanguage activates GFM (tables / strikethrough /
+      // task lists / autolinks) in the editor's source highlighting so
+      // the editor visually matches what the preview will render.
+      markdown({ base: markdownLanguage }),
+      mathDecorationPlugin,
+      EditorView.lineWrapping,
+      FORMAT_KEYMAP,
+      SLASH_MENU,
+      dialogKeys,
+    ];
   }, [onInsertLinkRequest, onInsertImageRequest]);
 
   return (

@@ -30,6 +30,22 @@
   background: var(--bg);
 }
 
+/*
+ * Math source highlighting — added by mathDecorationPlugin. CodeMirror
+ * doesn't ship a default tag for LaTeX, so we style by the explicit
+ * class names the plugin emits. Color tracks --accent so all four
+ * themes get a consistent affordance.
+ */
+.wrapper :global(.cm-math) {
+  color: var(--accent);
+}
+
+.wrapper :global(.cm-math-block),
+.wrapper :global(.cm-math-env) {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: var(--radius-sm);
+}
+
 .wrapper :global(.cm-scroller) {
   font-family: var(--font-mono);
   padding: var(--space-2) 0;
