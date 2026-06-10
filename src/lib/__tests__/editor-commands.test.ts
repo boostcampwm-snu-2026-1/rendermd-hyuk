@@ -3,7 +3,6 @@ import { EditorState, EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import {
-  insertImage,
   insertLink,
   toggleBold,
   toggleBulletList,
@@ -154,17 +153,5 @@ describe('insert commands', () => {
     const v = makeView('hello world', [6, 11]); // selects "world"
     insertLink(v, 'https://example.com', 'IGNORED');
     expectDoc(v, 'hello [world](https://example.com)');
-  });
-
-  it('insertImage with no selection inserts ![alt](url)', () => {
-    const v = makeView('start ', { cursor: 6 });
-    insertImage(v, 'https://cdn/img.png', 'a kitten');
-    expectDoc(v, 'start ![a kitten](https://cdn/img.png)');
-  });
-
-  it('insertImage with a selection REPLACES the selection', () => {
-    const v = makeView('keep replace-me', [5, 15]); // selects "replace-me"
-    insertImage(v, 'u', 'alt');
-    expectDoc(v, 'keep ![alt](u)');
   });
 });

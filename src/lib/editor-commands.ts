@@ -166,7 +166,7 @@ export const toggleQuote = (view: EditorView): boolean =>
     apply: () => '> ',
   });
 
-// ─── Insert commands (link / image) ────────────────────────────────────
+// ─── Insert commands ───────────────────────────────────────────────────
 
 /**
  * Insert (or wrap, when there's a selection) a markdown link.
@@ -188,25 +188,6 @@ export function insertLink(view: EditorView, url: string, text: string): boolean
     changes: { from: range.from, to: range.to, insert: inserted },
     selection: { anchor: cursor },
     userEvent: 'input.insert.link',
-  });
-  view.focus();
-  return true;
-}
-
-/**
- * Insert an image reference. Images don't have a "wrap an existing
- * range" interpretation in markdown — the visible part IS the alt text.
- * Selection is replaced.
- */
-export function insertImage(view: EditorView, url: string, alt: string): boolean {
-  const { state } = view;
-  const range = state.selection.main;
-  const inserted = `![${alt}](${url})`;
-  const cursor = range.from + inserted.length;
-  view.dispatch({
-    changes: { from: range.from, to: range.to, insert: inserted },
-    selection: { anchor: cursor },
-    userEvent: 'input.insert.image',
   });
   view.focus();
   return true;

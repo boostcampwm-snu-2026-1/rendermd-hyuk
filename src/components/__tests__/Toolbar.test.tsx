@@ -19,7 +19,6 @@ vi.mock('@/lib/editor-commands', () => ({
   toggleTodo: vi.fn(),
   toggleQuote: vi.fn(),
   insertLink: vi.fn(),
-  insertImage: vi.fn(),
 }));
 
 import { toggleBold, toggleHeading } from '@/lib/editor-commands';
@@ -36,11 +35,11 @@ function makeViewStub() {
 }
 
 describe('<Toolbar />', () => {
-  it('renders 13 grouped formatting buttons', () => {
+  it('renders 12 grouped formatting buttons', () => {
     render(<Toolbar view={null} />);
     const buttons = screen.getAllByRole('button');
-    // 4 inline + 3 headings + 3 list shapes + 1 quote + 2 insert = 13
-    expect(buttons).toHaveLength(13);
+    // 4 inline + 3 headings + 3 list shapes + 1 quote + 1 link = 12
+    expect(buttons).toHaveLength(12);
   });
 
   it('all buttons are disabled until the EditorView ref is wired', () => {
@@ -127,11 +126,6 @@ describe('<Toolbar />', () => {
       render(<Toolbar view={makeViewStub()} openRequest="link" onConsumeOpenRequest={onConsume} />);
       expect(screen.getByRole('dialog', { name: /insert link/i })).toBeInTheDocument();
       expect(onConsume).toHaveBeenCalledTimes(1);
-    });
-
-    it('openRequest="image" opens the image dialog', () => {
-      render(<Toolbar view={makeViewStub()} openRequest="image" onConsumeOpenRequest={() => {}} />);
-      expect(screen.getByRole('dialog', { name: /insert image/i })).toBeInTheDocument();
     });
   });
 });

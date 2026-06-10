@@ -75,8 +75,6 @@ interface EditorPaneProps {
   onActiveMarksChange?: (active: ActiveMarks) => void;
   /** Mod-K from inside the editor — open the link-insert dialog. */
   onInsertLinkRequest?: () => void;
-  /** Mod-Shift-M from inside the editor — open the image-insert dialog. */
-  onInsertImageRequest?: () => void;
 }
 
 export function EditorPane({
@@ -86,7 +84,6 @@ export function EditorPane({
   onCreateEditor,
   onActiveMarksChange,
   onInsertLinkRequest,
-  onInsertImageRequest,
 }: EditorPaneProps) {
   // Dialog-opening shortcuts need access to the parent's callbacks, so
   // their keymap can't be a module constant like FORMAT_KEYMAP. Memoize
@@ -102,14 +99,6 @@ export function EditorPane({
           return true;
         },
       },
-      {
-        key: 'Mod-Shift-m',
-        run: () => {
-          if (onInsertImageRequest == null) return false;
-          onInsertImageRequest();
-          return true;
-        },
-      },
     ]);
     return [
       // base: markdownLanguage activates GFM (tables / strikethrough /
@@ -122,7 +111,7 @@ export function EditorPane({
       SLASH_MENU,
       dialogKeys,
     ];
-  }, [onInsertLinkRequest, onInsertImageRequest]);
+  }, [onInsertLinkRequest]);
 
   return (
     <div className={styles.wrapper}>
