@@ -230,16 +230,24 @@ export function Toolbar({
   // the WAI-ARIA Authoring Practices for a horizontal toolbar.
   const [focusIndex, setFocusIndex] = useState(0);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Mirror focusIndex in a ref so the key handler reads the CURRENT
+  // value — not the value captured when the handler closed. The
+  // button's onFocus also pushes new indices in (mouse focus, dialog
+  // close), so an arrow press right after a mouse click would
+  // otherwise stale-jump back to the old index.
+  const focusIndexRef = useRef(0);
+  focusIndexRef.current = focusIndex;
 
-  const handleToolbarKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleToolbarKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     const total = FLAT_BUTTONS.length;
+    const current = focusIndexRef.current;
     let next: number | null = null;
     switch (event.key) {
       case 'ArrowRight':
-        next = (focusIndex + 1) % total;
+        next = (current + 1) % total;
         break;
       case 'ArrowLeft':
-        next = (focusIndex - 1 + total) % total;
+        next = (current - 1 + total) % total;
         break;
       case 'Home':
         next = 0;
@@ -253,7 +261,13 @@ export function Toolbar({
     event.preventDefault();
     setFocusIndex(next);
     buttonRefs.current[next]?.focus();
-  };
+  }, []);
+
+  // Stable onCancel: passing an inline arrow would re-trigger
+  // InsertDialog's mount-effect on every Toolbar render, tearing down
+  // and re-installing the keydown trap + focus-restore mid-life. The
+  // memoized version closes only over setOpenDialog (stable).
+  const handleDialogCancel = useCallback(() => setOpenDialog(null), []);
 
   let flatIndex = -1;
 
@@ -315,7 +329,7 @@ export function Toolbar({
         <InsertDialog
           kind={openDialog}
           initialText={initialText}
-          onCancel={() => setOpenDialog(null)}
+          onCancel={handleDialogCancel}
           onSubmit={handleDialogSubmit}
         />
       )}

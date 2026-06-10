@@ -70,11 +70,17 @@ export const viewport: Viewport = {
 // src/contexts/ThemeContext.tsx and MathAlignContext.tsx because this
 // script runs before React loads and cannot import TS modules. Keep
 // them in sync.
+//
+// `data-ready` is set via requestAnimationFrame so themes.css can keep
+// the body's color transition OFF for the first paint. Without it,
+// dark / sepia / HC users see a one-frame UA-default-white → theme
+// background transition.
 const preReactInitScript = `(function(){try{
   var t=localStorage.getItem('rendermd:theme');
   if(t==='light'||t==='dark'||t==='sepia'||t==='hc'){document.documentElement.setAttribute('data-theme',t);}
   var m=localStorage.getItem('rendermd:math-align');
   if(m==='center'||m==='left'){document.documentElement.setAttribute('data-math-align',m);}
+  requestAnimationFrame(function(){document.documentElement.setAttribute('data-ready','');});
 }catch(e){}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

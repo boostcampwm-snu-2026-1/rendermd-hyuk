@@ -1,0 +1,23 @@
+.slot {
+  /* Match the switcher's final outer box so swapping in the real
+     <select> doesn't shift the row. */
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  opacity: 0;
+  animation: fade-in 220ms ease-out 200ms forwards;
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot {
+    animation: none;
+    opacity: 1;
+  }
+}

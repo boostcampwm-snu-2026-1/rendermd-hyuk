@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useDeferredValue, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { EditorView } from '@codemirror/view';
 import type { InsertKind } from '@/components/InsertDialog';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ExportButton } from '@/components/ExportButton';
 import { EditorPaneLoader } from '@/components/EditorPaneLoader';
+import { HeaderSlotPlaceholder } from '@/components/HeaderSlotPlaceholder';
 import { Logo } from '@/components/Logo';
 import { PreviewPaneLoader } from '@/components/PreviewPaneLoader';
 import { SaveStatusIndicator } from '@/components/SaveStatus';
@@ -33,23 +35,27 @@ const PreviewPane = dynamic(() => import('@/components/PreviewPane').then((m) =>
 // document at build time), and React 19 hydration doesn't reconcile a
 // controlled select's selected option from the SSR-baked `selected=""`
 // attribute. Client-only render side-steps the whole class of issue.
+// The `loading` placeholder reserves the row width so the brand block
+// doesn't reflow when the switcher pops in.
 const ThemeSwitcher = dynamic(
   () => import('@/components/ThemeSwitcher').then((m) => m.ThemeSwitcher),
-  { ssr: false },
+  { ssr: false, loading: () => <HeaderSlotPlaceholder width={132} label="Theme" /> },
 );
 
 // Same reason as ThemeSwitcher (controlled <select>).
 const MathAlignSwitcher = dynamic(
   () => import('@/components/MathAlignSwitcher').then((m) => m.MathAlignSwitcher),
-  { ssr: false },
+  { ssr: false, loading: () => <HeaderSlotPlaceholder width={120} label="Math align" /> },
 );
 
 // Toolbar pulls 11 lucide-react icons (~25 kB) + the @codemirror/state
 // runtime (~12 kB) via editor-commands. Lazy-loading keeps the / route's
 // First Load JS within the perf budget — the toolbar isn't usable before
-// EditorPane (also lazy) mounts anyway.
+// EditorPane (also lazy) mounts anyway. The 40px placeholder matches the
+// toolbar's actual row so the editor below doesn't shift.
 const Toolbar = dynamic(() => import('@/components/Toolbar').then((m) => m.Toolbar), {
   ssr: false,
+  loading: () => <div style={{ height: 40 }} aria-hidden="true" />,
 });
 
 const DEFAULT_VALUE = `# Welcome to rendermd
@@ -77,6 +83,11 @@ function greet(name: string) {
 
 export default function Home() {
   const { value, setValue, status, errorKind, retry, flush } = useDraftStorage(DEFAULT_VALUE);
+  // Defer the preview's input — typing stays smooth at 60 fps even on a
+  // 1 MB document because React only re-runs the markdown → react-markdown
+  // → KaTeX pipeline on an idle tick. The editor side always renders
+  // against the eager `value`.
+  const deferredMarkdown = useDeferredValue(value);
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('edit');
   // EditorView ref + derived active-marks drive the formatting toolbar.
@@ -98,7 +109,18 @@ export default function Home() {
       <header className={styles.header} data-print="hide">
         <div className={styles.brand}>
           <Logo size={22} className={styles.logo} title={null} />
-          <h1 className={styles.wordmark}>rendermd</h1>
+          {/*
+           * Brand wordmark is NOT an <h1>: the user-pasted article in
+           * the preview pane is the actual document, and react-markdown
+           * emits an <h1> from `# Heading` at the top of that doc.
+           * Having two <h1>s in the page outline confuses screen readers
+           * — the page's heading IS the user's document title. Render
+           * the brand as a non-heading div with role="img" + aria-label
+           * so it still has an accessible name.
+           */}
+          <div role="img" aria-label="rendermd" className={styles.wordmark}>
+            rendermd
+          </div>
           <span className={styles.tagline}>markdown · preview · pdf</span>
         </div>
         <div className={styles.toolbar}>
@@ -113,23 +135,39 @@ export default function Home() {
         <section
           className={styles.editor}
           aria-label="Markdown editor"
+          aria-busy={editorView == null}
           data-print="hide"
           data-tab-active={activeTab === 'edit'}
         >
-          <Toolbar
-            view={editorView}
-            active={activeMarks}
-            openRequest={dialogRequest}
-            onConsumeOpenRequest={consumeDialogRequest}
-          />
-          <EditorPane
-            value={value}
-            onChange={setValue}
-            dark={isDark}
-            onCreateEditor={setEditorView}
-            onActiveMarksChange={setActiveMarks}
-            onInsertLinkRequest={openLinkDialog}
-          />
+          {/*
+           * Each pane gets its OWN ErrorBoundary: a stale-CDN chunk 404
+           * on either side shouldn't blank the whole app. The other
+           * pane (and header / save status / theme switcher) keep
+           * working, so the user can at least save their draft and
+           * reload.
+           */}
+          <ErrorBoundary
+            fallback={
+              <div role="alert" className={styles.paneFailure}>
+                Editor failed to load. Reload the page.
+              </div>
+            }
+          >
+            <Toolbar
+              view={editorView}
+              active={activeMarks}
+              openRequest={dialogRequest}
+              onConsumeOpenRequest={consumeDialogRequest}
+            />
+            <EditorPane
+              value={value}
+              onChange={setValue}
+              dark={isDark}
+              onCreateEditor={setEditorView}
+              onActiveMarksChange={setActiveMarks}
+              onInsertLinkRequest={openLinkDialog}
+            />
+          </ErrorBoundary>
         </section>
         <section
           className={styles.preview}
@@ -137,7 +175,15 @@ export default function Home() {
           data-print="target"
           data-tab-active={activeTab === 'preview'}
         >
-          <PreviewPane markdown={value} />
+          <ErrorBoundary
+            fallback={
+              <div role="alert" className={styles.paneFailure}>
+                Preview failed to load. Reload the page.
+              </div>
+            }
+          >
+            <PreviewPane markdown={deferredMarkdown} />
+          </ErrorBoundary>
         </section>
       </main>
     </div>
