@@ -103,7 +103,18 @@ export default function Home() {
       <header className={styles.header} data-print="hide">
         <div className={styles.brand}>
           <Logo size={22} className={styles.logo} title={null} />
-          <h1 className={styles.wordmark}>rendermd</h1>
+          {/*
+           * Brand wordmark is NOT an <h1>: the user-pasted article in
+           * the preview pane is the actual document, and react-markdown
+           * emits an <h1> from `# Heading` at the top of that doc.
+           * Having two <h1>s in the page outline confuses screen readers
+           * — the page's heading IS the user's document title. Render
+           * the brand as a non-heading div with role="img" + aria-label
+           * so it still has an accessible name.
+           */}
+          <div role="img" aria-label="rendermd" className={styles.wordmark}>
+            rendermd
+          </div>
           <span className={styles.tagline}>markdown · preview · pdf</span>
         </div>
         <div className={styles.toolbar}>
@@ -118,6 +129,7 @@ export default function Home() {
         <section
           className={styles.editor}
           aria-label="Markdown editor"
+          aria-busy={editorView == null}
           data-print="hide"
           data-tab-active={activeTab === 'edit'}
         >
