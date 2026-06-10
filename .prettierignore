@@ -2,3 +2,9 @@ node_modules/
 .next/
 out/
 pnpm-lock.yaml
+
+# Render-corpus fixtures intentionally exercise raw LLM-output shapes
+# (LaTeX with `*` exponents, unbalanced code fences, trailing-space hard
+# breaks). Prettier rewrites them in ways that change semantics, so the
+# fixture content stays as-authored.
+scripts/fixtures/
