@@ -68,6 +68,10 @@
 .editor {
   border-right: 1px solid var(--border);
   overflow: hidden;
+  /* Flex column so the Toolbar pins to the top at its natural 40px and
+     EditorPane (flex: 1 in its own CSS) takes the remaining height. */
+  display: flex;
+  flex-direction: column;
   /* min-height: 0 is critical — without it the grid item defaults to
      min-height: auto and grows to fit content, which means .cm-editor's
      height: 100% resolves against an unbounded parent and .cm-scroller

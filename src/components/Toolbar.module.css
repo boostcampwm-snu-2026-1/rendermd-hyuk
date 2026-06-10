@@ -1,0 +1,93 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 40px;
+  padding: 0 var(--space-3);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  /* Horizontal scroll on narrow screens — wrap looks broken with grouped
+     dividers, scroll keeps the row tidy. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+}
+
+/*
+ * Subtle divider between groups. Position via the relative parent + a
+ * pseudo so adjacent groups don't visually pile up against each other.
+ */
+.group:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--space-3) / 2);
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border);
+}
+
+.button {
+  /* Tap target hits WCAG 2.5.5 (32x32 visible, padding-supplied). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--fg);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+[data-theme='hc'] .button[aria-pressed='true'] {
+  /* HC needs a high-contrast active state, not a tint. */
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  /* Drop the divider on tight screens — scroll is enough to separate. */
+  .group:not(:first-child)::before {
+    display: none;
+  }
+}
