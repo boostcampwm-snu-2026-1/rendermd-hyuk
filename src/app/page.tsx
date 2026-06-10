@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import type { EditorView } from '@codemirror/view';
 import { ExportButton } from '@/components/ExportButton';
 import { EditorPaneLoader } from '@/components/EditorPaneLoader';
 import { Logo } from '@/components/Logo';
@@ -11,6 +12,7 @@ import { TabSwitcher, type Tab } from '@/components/TabSwitcher';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDraftStorage } from '@/hooks/useDraftStorage';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { type ActiveMarks, EMPTY_ACTIVE } from '@/lib/editor-active-types';
 import styles from './page.module.css';
 
 // CodeMirror is ~200 kB; defer behind dynamic import.
@@ -34,6 +36,14 @@ const ThemeSwitcher = dynamic(
   () => import('@/components/ThemeSwitcher').then((m) => m.ThemeSwitcher),
   { ssr: false },
 );
+
+// Toolbar pulls 11 lucide-react icons (~25 kB) + the @codemirror/state
+// runtime (~12 kB) via editor-commands. Lazy-loading keeps the / route's
+// First Load JS within the perf budget — the toolbar isn't usable before
+// EditorPane (also lazy) mounts anyway.
+const Toolbar = dynamic(() => import('@/components/Toolbar').then((m) => m.Toolbar), {
+  ssr: false,
+});
 
 const DEFAULT_VALUE = `# Welcome to rendermd
 
@@ -62,6 +72,10 @@ export default function Home() {
   const { value, setValue, status, errorKind, retry, flush } = useDraftStorage(DEFAULT_VALUE);
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('edit');
+  // EditorView ref + derived active-marks drive the formatting toolbar.
+  // Both are null/empty until CodeMirror's onCreateEditor fires.
+  const [editorView, setEditorView] = useState<EditorView | null>(null);
+  const [activeMarks, setActiveMarks] = useState<ActiveMarks>(EMPTY_ACTIVE);
   const isDark = theme === 'dark';
 
   useKeyboardShortcuts({ onSave: flush });
@@ -88,7 +102,14 @@ export default function Home() {
           data-print="hide"
           data-tab-active={activeTab === 'edit'}
         >
-          <EditorPane value={value} onChange={setValue} dark={isDark} />
+          <Toolbar view={editorView} active={activeMarks} />
+          <EditorPane
+            value={value}
+            onChange={setValue}
+            dark={isDark}
+            onCreateEditor={setEditorView}
+            onActiveMarksChange={setActiveMarks}
+          />
         </section>
         <section
           className={styles.preview}
