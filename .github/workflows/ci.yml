@@ -41,6 +41,9 @@ jobs:
       - name: Test
         run: pnpm test:run
 
+      - name: Dead-code check (knip)
+        run: pnpm knip
+
       - name: Build (with perf budget)
         env:
           PERF_BUDGET_KB: 130
