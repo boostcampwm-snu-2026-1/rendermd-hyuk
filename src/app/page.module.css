@@ -90,6 +90,14 @@
   color: var(--fg);
 }
 
+/* Fallback shown when a pane's dynamic chunk fails (e.g. stale CDN
+   after a deploy). Quiet copy — the rest of the app still works. */
+.paneFailure {
+  padding: var(--space-6);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
+
 @media (max-width: 767px) {
   .layout {
     grid-template-columns: 1fr;
