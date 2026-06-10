@@ -118,7 +118,14 @@ body {
  * The `\begin{aligned}` env still left-justifies the column LEFT OF `&`
  * per LaTeX semantics — this rule only moves the BLOCK's outer alignment.
  */
-[data-math-align='left'] .katex-display {
+[data-math-align='left'] .katex-display,
+[data-math-align='left'] .katex-display > .katex {
+  /*
+   * KaTeX's own CSS applies `text-align: center` to BOTH `.katex-display`
+   * AND `.katex-display > .katex` — overriding only the outer node
+   * shifts nothing because the inner `.katex` (display: block, full
+   * article width) still re-centers its content. Override both.
+   */
   text-align: left;
 }
 
@@ -321,16 +328,35 @@ html {
  * as a clear tint in light / sepia, a visible band in dark, and
  * stays unambiguous in HC.
  *
- * This rule covers PREVIEW selections (article text, table cells,
- * dialog inputs). The EDITOR's selection styling lives in EditorPane
- * via EditorView.theme — it has to ride CodeMirror's hashed-class
- * cascade to beat their `.cm-line ::selection { background:
- * transparent !important }` (same specificity, our static rule loses
- * on load order).
+ * Preview side (article, tables, dialog inputs) gets the global
+ * ::selection rule. The EDITOR (CodeMirror) needs higher specificity
+ * to beat CM's runtime-injected `.ͼ# .cm-line ::selection { background:
+ * transparent !important }` (specificity 0,2,1, loaded later).
+ *
+ * Strategy: scope our editor rule with `[data-theme]` + `.cm-editor`
+ * + the inner selector. That's (0,3,1) — beats CM cleanly regardless
+ * of stylesheet order. We override both the native `::selection`
+ * (which CM forces to transparent) and the JS-painted
+ * `.cm-selectionBackground` layer that's drawn on top.
+ *
+ * `color-mix` with `var(--accent)` works because `--accent` is
+ * defined on the [data-theme] ancestor and CSS variables inherit
+ * into the editor's DOM.
  */
 ::selection {
   background: color-mix(in srgb, var(--accent) 40%, transparent);
   color: inherit;
+}
+
+[data-theme] .cm-editor .cm-content ::selection,
+[data-theme] .cm-editor .cm-line ::selection,
+[data-theme] .cm-editor .cm-line::selection {
+  background: color-mix(in srgb, var(--accent) 40%, transparent) !important;
+}
+
+[data-theme] .cm-editor .cm-selectionBackground,
+[data-theme] .cm-editor.cm-focused .cm-selectionBackground {
+  background: color-mix(in srgb, var(--accent) 40%, transparent) !important;
 }
 
 /* HC: full-opacity selection — hard foreground/background contrast
@@ -338,4 +364,16 @@ html {
 [data-theme='hc'] ::selection {
   background: var(--accent);
   color: var(--accent-fg);
+}
+
+[data-theme='hc'] .cm-editor .cm-content ::selection,
+[data-theme='hc'] .cm-editor .cm-line ::selection,
+[data-theme='hc'] .cm-editor .cm-line::selection {
+  background: var(--accent) !important;
+  color: var(--accent-fg) !important;
+}
+
+[data-theme='hc'] .cm-editor .cm-selectionBackground,
+[data-theme='hc'] .cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--accent) !important;
 }
