@@ -1,5 +1,10 @@
 .wrapper {
-  height: 100%;
+  /* Lives inside a `display: flex; flex-direction: column` parent
+     (the .editor section). flex: 1 takes the remaining height after
+     the Toolbar; min-height: 0 keeps the height resolution chain
+     bounded — same rationale as on .editor itself. */
+  flex: 1 1 0;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
