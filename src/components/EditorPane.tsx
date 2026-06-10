@@ -1,22 +1,25 @@
 'use client';
 
+import { useMemo } from 'react';
 import CodeMirror, { type Extension } from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView, keymap } from '@codemirror/view';
+import { autocompletion } from '@codemirror/autocomplete';
 import {
   toggleBold,
-  toggleItalic,
-  toggleStrike,
-  toggleInlineCode,
-  toggleHeading,
   toggleBulletList,
+  toggleHeading,
+  toggleInlineCode,
+  toggleItalic,
   toggleOrderedList,
-  toggleTodo,
   toggleQuote,
+  toggleStrike,
+  toggleTodo,
 } from '@/lib/editor-commands';
 import { getActiveMarks } from '@/lib/editor-active';
 import type { ActiveMarks } from '@/lib/editor-active-types';
+import { slashCompletionSource } from '@/lib/editor-slash-completions';
 import styles from './EditorPane.module.css';
 
 // Keyboard shortcuts mirror the toolbar button order. Inline marks use
@@ -36,12 +39,15 @@ const FORMAT_KEYMAP = keymap.of([
   { key: 'Mod-Shift-.', run: toggleQuote },
 ]);
 
-// Soft-wrap long lines. Two reasons:
-//   1. Conventional behavior for prose / markdown editors (iA Writer, Typora).
-//   2. With short content, no wrap = .cm-scroller has no overflow, so wheel
-//      events fall through to the .editor wrapper (overflow:hidden) and the
-//      trackpad feels dead. Wrapping keeps the scroller authoritative.
-const EXTENSIONS: Extension[] = [markdown(), EditorView.lineWrapping, FORMAT_KEYMAP];
+// `/` slash menu — autocomplete tooltip with block templates. `override`
+// replaces the default completion source so we don't get noisy
+// word-completions in prose mode; activateOnTyping keeps the popup live
+// as the user filters with /h, /li, etc.
+const SLASH_MENU = autocompletion({
+  override: [slashCompletionSource],
+  activateOnTyping: true,
+  closeOnBlur: true,
+});
 
 const BASIC_SETUP = {
   lineNumbers: true,
@@ -66,6 +72,10 @@ interface EditorPaneProps {
    * parent) so `@codemirror/language` stays out of the main route chunk.
    */
   onActiveMarksChange?: (active: ActiveMarks) => void;
+  /** Mod-K from inside the editor — open the link-insert dialog. */
+  onInsertLinkRequest?: () => void;
+  /** Mod-Shift-M from inside the editor — open the image-insert dialog. */
+  onInsertImageRequest?: () => void;
 }
 
 export function EditorPane({
@@ -74,13 +84,41 @@ export function EditorPane({
   dark = false,
   onCreateEditor,
   onActiveMarksChange,
+  onInsertLinkRequest,
+  onInsertImageRequest,
 }: EditorPaneProps) {
+  // Dialog-opening shortcuts need access to the parent's callbacks, so
+  // their keymap can't be a module constant like FORMAT_KEYMAP. Memoize
+  // it so CodeMirror only reconfigures when the callbacks actually
+  // change.
+  const extensions = useMemo<Extension[]>(() => {
+    const dialogKeys = keymap.of([
+      {
+        key: 'Mod-k',
+        run: () => {
+          if (onInsertLinkRequest == null) return false;
+          onInsertLinkRequest();
+          return true;
+        },
+      },
+      {
+        key: 'Mod-Shift-m',
+        run: () => {
+          if (onInsertImageRequest == null) return false;
+          onInsertImageRequest();
+          return true;
+        },
+      },
+    ]);
+    return [markdown(), EditorView.lineWrapping, FORMAT_KEYMAP, SLASH_MENU, dialogKeys];
+  }, [onInsertLinkRequest, onInsertImageRequest]);
+
   return (
     <div className={styles.wrapper}>
       <CodeMirror
         value={value}
         onChange={onChange}
-        extensions={EXTENSIONS}
+        extensions={extensions}
         basicSetup={BASIC_SETUP}
         theme={dark ? oneDark : 'light'}
         height="100%"

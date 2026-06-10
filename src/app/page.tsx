@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { EditorView } from '@codemirror/view';
+import type { InsertKind } from '@/components/InsertDialog';
 import { ExportButton } from '@/components/ExportButton';
 import { EditorPaneLoader } from '@/components/EditorPaneLoader';
 import { Logo } from '@/components/Logo';
@@ -82,9 +83,16 @@ export default function Home() {
   // Both are null/empty until CodeMirror's onCreateEditor fires.
   const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [activeMarks, setActiveMarks] = useState<ActiveMarks>(EMPTY_ACTIVE);
+  // One-shot dialog-open request, set by EditorPane's Mod-K / Mod-Shift-M
+  // shortcuts and consumed by Toolbar. Cleared on the next render.
+  const [dialogRequest, setDialogRequest] = useState<InsertKind | null>(null);
   const isDark = theme === 'dark';
 
   useKeyboardShortcuts({ onSave: flush });
+
+  const openLinkDialog = useCallback(() => setDialogRequest('link'), []);
+  const openImageDialog = useCallback(() => setDialogRequest('image'), []);
+  const consumeDialogRequest = useCallback(() => setDialogRequest(null), []);
 
   return (
     <div className={styles.app} data-app>
@@ -109,13 +117,20 @@ export default function Home() {
           data-print="hide"
           data-tab-active={activeTab === 'edit'}
         >
-          <Toolbar view={editorView} active={activeMarks} />
+          <Toolbar
+            view={editorView}
+            active={activeMarks}
+            openRequest={dialogRequest}
+            onConsumeOpenRequest={consumeDialogRequest}
+          />
           <EditorPane
             value={value}
             onChange={setValue}
             dark={isDark}
             onCreateEditor={setEditorView}
             onActiveMarksChange={setActiveMarks}
+            onInsertLinkRequest={openLinkDialog}
+            onInsertImageRequest={openImageDialog}
           />
         </section>
         <section

@@ -165,3 +165,49 @@ export const toggleQuote = (view: EditorView): boolean =>
     detect: /^> /,
     apply: () => '> ',
   });
+
+// ─── Insert commands (link / image) ────────────────────────────────────
+
+/**
+ * Insert (or wrap, when there's a selection) a markdown link.
+ *   - With no selection at cursor pos P:
+ *       insert `[text](url)` and leave the caret AFTER the closing `)`.
+ *   - With a selection covering "hello":
+ *       wrap to `[hello](url)` keeping the original text as the visible
+ *       part. `text` arg is ignored when the doc already has content
+ *       inside the wrap range (preserves the user's typing).
+ */
+export function insertLink(view: EditorView, url: string, text: string): boolean {
+  const { state } = view;
+  const range = state.selection.main;
+  const existing = state.doc.sliceString(range.from, range.to);
+  const visible = existing.length > 0 ? existing : text;
+  const inserted = `[${visible}](${url})`;
+  const cursor = range.from + inserted.length;
+  view.dispatch({
+    changes: { from: range.from, to: range.to, insert: inserted },
+    selection: { anchor: cursor },
+    userEvent: 'input.insert.link',
+  });
+  view.focus();
+  return true;
+}
+
+/**
+ * Insert an image reference. Images don't have a "wrap an existing
+ * range" interpretation in markdown — the visible part IS the alt text.
+ * Selection is replaced.
+ */
+export function insertImage(view: EditorView, url: string, alt: string): boolean {
+  const { state } = view;
+  const range = state.selection.main;
+  const inserted = `![${alt}](${url})`;
+  const cursor = range.from + inserted.length;
+  view.dispatch({
+    changes: { from: range.from, to: range.to, insert: inserted },
+    selection: { anchor: cursor },
+    userEvent: 'input.insert.image',
+  });
+  view.focus();
+  return true;
+}
