@@ -166,7 +166,7 @@ export const toggleQuote = (view: EditorView): boolean =>
     apply: () => '> ',
   });
 
-// ─── Insert commands (link / image) ────────────────────────────────────
+// ─── Insert commands ───────────────────────────────────────────────────
 
 /**
  * Insert (or wrap, when there's a selection) a markdown link.
