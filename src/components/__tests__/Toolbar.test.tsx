@@ -25,7 +25,14 @@ vi.mock('@/lib/editor-commands', () => ({
 import { toggleBold, toggleHeading } from '@/lib/editor-commands';
 
 function makeViewStub() {
-  return {} as EditorView;
+  // Just enough surface for Toolbar's selectionText(view) helper —
+  // commands are mocked above so we don't need a real dispatch path.
+  return {
+    state: {
+      selection: { main: { from: 0, to: 0 } },
+      doc: { sliceString: () => '' },
+    },
+  } as unknown as EditorView;
 }
 
 describe('<Toolbar />', () => {
@@ -81,5 +88,50 @@ describe('<Toolbar />', () => {
   it('carries data-print="hide" so it does not appear in PDF', () => {
     render(<Toolbar view={null} />);
     expect(screen.getByRole('toolbar')).toHaveAttribute('data-print', 'hide');
+  });
+
+  describe('roving-tabindex a11y', () => {
+    it('places only the first button in the tab order initially', () => {
+      render(<Toolbar view={makeViewStub()} />);
+      const buttons = screen.getAllByRole('button');
+      expect(buttons[0]).toHaveAttribute('tabindex', '0');
+      for (let i = 1; i < buttons.length; i++) {
+        expect(buttons[i]).toHaveAttribute('tabindex', '-1');
+      }
+    });
+
+    it('ArrowRight moves focus and tab order to the next button', async () => {
+      const user = userEvent.setup();
+      render(<Toolbar view={makeViewStub()} />);
+      const buttons = screen.getAllByRole('button');
+      buttons[0].focus();
+      await user.keyboard('{ArrowRight}');
+      expect(buttons[1]).toHaveFocus();
+      expect(buttons[1]).toHaveAttribute('tabindex', '0');
+      expect(buttons[0]).toHaveAttribute('tabindex', '-1');
+    });
+
+    it('End jumps to the last button', async () => {
+      const user = userEvent.setup();
+      render(<Toolbar view={makeViewStub()} />);
+      const buttons = screen.getAllByRole('button');
+      buttons[0].focus();
+      await user.keyboard('{End}');
+      expect(buttons[buttons.length - 1]).toHaveFocus();
+    });
+  });
+
+  describe('external dialog open request', () => {
+    it('openRequest="link" opens the link dialog and clears via onConsume', () => {
+      const onConsume = vi.fn();
+      render(<Toolbar view={makeViewStub()} openRequest="link" onConsumeOpenRequest={onConsume} />);
+      expect(screen.getByRole('dialog', { name: /insert link/i })).toBeInTheDocument();
+      expect(onConsume).toHaveBeenCalledTimes(1);
+    });
+
+    it('openRequest="image" opens the image dialog', () => {
+      render(<Toolbar view={makeViewStub()} openRequest="image" onConsumeOpenRequest={() => {}} />);
+      expect(screen.getByRole('dialog', { name: /insert image/i })).toBeInTheDocument();
+    });
   });
 });
