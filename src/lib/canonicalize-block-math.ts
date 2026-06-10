@@ -104,12 +104,27 @@ const BLOCK_MATH_PAIR = /\$\$([\s\S]+?)\$\$/g;
 const HAS_ENV = /\\(?:begin|end)\{/;
 
 function rewriteMath(segment: string): string {
-  return segment.replace(BLOCK_MATH_PAIR, (full, inner: string) => {
+  return segment.replace(BLOCK_MATH_PAIR, (full, inner: string, offset: number) => {
     const hasNewline = inner.includes('\n');
     const hasEnv = HAS_ENV.test(inner);
-    if (!hasNewline && !hasEnv) {
-      // Single-line, no env — leave as-is. May be inline display, which
-      // is its own quirk but not what this preprocessor is for.
+
+    // "Alone on its own line" — preceded by start-of-segment or `\n`
+    // (allowing trailing spaces in between), and followed by `\n` or
+    // end-of-segment. This is what the user intends when they paste
+    // `$$ E = mc^2 $$` on a line by itself — remark-math otherwise
+    // treats compact `$$x$$` as inline display, no `.katex-display`
+    // gets emitted, and our math-align toggle has nothing to act on.
+    //
+    // We only normalize the alone-on-line case so legitimate inline
+    // uses like `prefix text $$x$$ suffix text` stay unchanged.
+    const beforeText = segment.slice(0, offset);
+    const afterText = segment.slice(offset + full.length);
+    const aloneOnLine = /(^|\n)[ \t]*$/.test(beforeText) && /^[ \t]*(\n|$)/.test(afterText);
+
+    if (!hasNewline && !hasEnv && !aloneOnLine) {
+      // Mid-line, single-line `$$x$$` — leave as-is. Treated as inline
+      // display by remark-math (which is its own quirk, but not the
+      // preprocessor's job).
       return full;
     }
     // Strip whitespace at the boundaries; remark-math is whitespace-strict
