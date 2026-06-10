@@ -9,7 +9,6 @@ import {
   Heading1,
   Heading2,
   Heading3,
-  Image as ImageIcon,
   Link as LinkIcon,
   List,
   ListOrdered,
@@ -19,7 +18,6 @@ import {
 } from 'lucide-react';
 import type { EditorView } from '@codemirror/view';
 import {
-  insertImage,
   insertLink,
   toggleBold,
   toggleBulletList,
@@ -186,14 +184,6 @@ const GROUPS: ButtonSpec[][] = [
       shortcut: 'Ctrl+K',
       open: 'link',
     },
-    {
-      key: 'image',
-      kind: 'dialog',
-      icon: ImageIcon,
-      label: 'Insert image',
-      shortcut: 'Ctrl+Shift+M',
-      open: 'image',
-    },
   ],
 ];
 
@@ -228,10 +218,7 @@ export function Toolbar({
 
   const handleDialogSubmit = useCallback(
     (url: string, text: string) => {
-      if (view != null) {
-        if (openDialog === 'link') insertLink(view, url, text);
-        else if (openDialog === 'image') insertImage(view, url, text);
-      }
+      if (view != null && openDialog === 'link') insertLink(view, url, text);
       setOpenDialog(null);
     },
     [openDialog, view],
