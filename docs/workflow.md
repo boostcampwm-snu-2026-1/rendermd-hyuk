@@ -99,14 +99,18 @@ Beyond the primary coding agent, I delegate independent checks to **three** spec
 - Exercise core flows like a real user: paste markdown, switch theme, export PDF, resize to mobile.
 - Report what's confusing, broken, or visually off.
 - **For any PR that touches rendering or print CSS: run `pnpm dlx tsx scripts/capture.ts`, then `Read` the produced `docs/screenshots/pdf-*.pdf` files (Claude Code's Read tool renders PDF pages as inline images). Inspect for clipping, alignment, margin, theme correctness.**
+- **For any PR: run the corpus harness (`pnpm dlx tsx scripts/render-corpus.ts`) to paste each fixture under `scripts/fixtures/` into the live site and assert minimum render counts (KaTeX displays, hljs blocks, page-break markers, zero console errors). Inspect failed fixtures and the per-fixture screenshots under `docs/screenshots/corpus/`.**
 
 **Prompt template:**
 
 > You are a non-technical user. You don't know markdown syntax. You opened rendermd at `<URL>`. Paste this LLM response into the editor: `[...]`. Try to save it as a PDF on desktop Chrome and on iOS Safari (mobile DevTools).
 > For any visual/print change: run `pnpm dlx tsx scripts/capture.ts`, then Read the produced PDFs at `/home/wsl/VLSI/rendermd/docs/screenshots/pdf-light.pdf` and `pdf-dark.pdf` — Claude's Read tool renders PDF pages as images. Look at the actual rendered output, not just the CSS.
-> Report every moment you were confused or stuck, plus any visual issues you can see in the captured PDFs.
+> For ANY PR: also run `pnpm dlx tsx scripts/render-corpus.ts` — this pastes 10 fixture markdowns (math/code/tables/Korean/nested-GFM/long-paragraph/page-break/empty/edge-cases) into the live site and asserts minimum render counts plus zero console errors. Read the per-fixture screenshots under `docs/screenshots/corpus/` if the script reports failures.
+> Report every moment you were confused or stuck, plus any visual issues you can see in the captured PDFs and corpus screenshots.
 
-**Expected output:** A short list of friction points + 1-2 concrete observations from the rendered PDF images.
+**Expected output:** A short list of friction points + 1-2 concrete observations from the rendered PDF images + corpus pass/fail summary (and what failed, if anything).
+
+**Adding a fixture:** drop a new `<n>-<topic>.md` under `scripts/fixtures/` and add an `EXPECTATIONS` row in `scripts/render-corpus.ts` keyed by the basename. Unlisted fixtures get a smoke-only run (paste + screenshot, no count assertions).
 
 ### Agent B — Senior FE reviewer
 
