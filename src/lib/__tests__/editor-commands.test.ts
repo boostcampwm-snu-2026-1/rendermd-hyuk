@@ -3,15 +3,17 @@ import { EditorState, EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { markdown } from '@codemirror/lang-markdown';
 import {
+  insertImage,
+  insertLink,
   toggleBold,
-  toggleItalic,
-  toggleStrike,
-  toggleInlineCode,
-  toggleHeading,
   toggleBulletList,
+  toggleHeading,
+  toggleInlineCode,
+  toggleItalic,
   toggleOrderedList,
-  toggleTodo,
   toggleQuote,
+  toggleStrike,
+  toggleTodo,
 } from '@/lib/editor-commands';
 
 /**
@@ -138,5 +140,31 @@ describe('block-prefix commands', () => {
     const v = makeView('quoted', { cursor: 0 });
     toggleQuote(v);
     expectDoc(v, '> quoted');
+  });
+});
+
+describe('insert commands', () => {
+  it('insertLink with no selection inserts [text](url)', () => {
+    const v = makeView('hello ', { cursor: 6 });
+    insertLink(v, 'https://example.com', 'site');
+    expectDoc(v, 'hello [site](https://example.com)');
+  });
+
+  it('insertLink with a selection wraps the existing text, ignoring the text arg', () => {
+    const v = makeView('hello world', [6, 11]); // selects "world"
+    insertLink(v, 'https://example.com', 'IGNORED');
+    expectDoc(v, 'hello [world](https://example.com)');
+  });
+
+  it('insertImage with no selection inserts ![alt](url)', () => {
+    const v = makeView('start ', { cursor: 6 });
+    insertImage(v, 'https://cdn/img.png', 'a kitten');
+    expectDoc(v, 'start ![a kitten](https://cdn/img.png)');
+  });
+
+  it('insertImage with a selection REPLACES the selection', () => {
+    const v = makeView('keep replace-me', [5, 15]); // selects "replace-me"
+    insertImage(v, 'u', 'alt');
+    expectDoc(v, 'keep ![alt](u)');
   });
 });
