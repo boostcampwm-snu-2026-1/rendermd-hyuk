@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileDown } from 'lucide-react';
+import { FileDown, Loader } from 'lucide-react';
 import { isIOSSafari } from '@/util/platform';
 import styles from './ExportButton.module.css';
 
@@ -65,18 +65,40 @@ export function ExportButton() {
     };
   }, [showGuide]);
 
+  // True while we've called window.print() and the browser hasn't yet
+  // returned the focus to us — used to render a small spinner so a
+  // multi-MB document doesn't feel frozen during the 5-10s print
+  // dialog spin-up.
+  const [preparing, setPreparing] = useState(false);
+
+  const callPrint = () => {
+    // Some sandboxed iframes / PWAs throw on window.print(). Failing
+    // silently leaves the user wondering why nothing happened — log so
+    // the next debugging session has a trail.
+    try {
+      window.print();
+    } catch (err) {
+      console.warn('[ExportButton] window.print() rejected', err);
+    } finally {
+      setPreparing(false);
+    }
+  };
+
   const triggerPrint = () => {
     setShowGuide(false);
-    // Defer to let the modal unmount before print steals the thread.
-    setTimeout(() => window.print(), 0);
+    setPreparing(true);
+    // Defer to let the modal unmount + spinner paint before print
+    // steals the main thread.
+    setTimeout(callPrint, 0);
   };
 
   const handleClick = () => {
     if (isIOSSafari()) {
       setShowGuide(true);
-    } else {
-      window.print();
+      return;
     }
+    setPreparing(true);
+    setTimeout(callPrint, 0);
   };
 
   return (
@@ -85,10 +107,16 @@ export function ExportButton() {
         type="button"
         className={styles.button}
         onClick={handleClick}
+        disabled={preparing}
         aria-label="Export as PDF"
+        aria-busy={preparing || undefined}
       >
-        <FileDown size={16} strokeWidth={2} aria-hidden="true" />
-        Export PDF
+        {preparing ? (
+          <Loader size={16} strokeWidth={2} aria-hidden="true" className={styles.spin} />
+        ) : (
+          <FileDown size={16} strokeWidth={2} aria-hidden="true" />
+        )}
+        {preparing ? 'Preparing…' : 'Export PDF'}
       </button>
       {showGuide && (
         <div

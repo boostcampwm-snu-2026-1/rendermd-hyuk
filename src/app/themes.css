@@ -95,13 +95,20 @@
 body {
   background: var(--bg);
   color: var(--fg);
+  /* Held until the inline init script sets [data-ready] on the next
+     paint — otherwise dark / sepia / HC users see a one-frame flash
+     of the UA-default white background fading INTO the theme color. */
+  transition: none;
+}
+
+[data-ready] body {
   transition:
     background var(--transition-base),
     color var(--transition-base);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body {
+  [data-ready] body {
     transition: none;
   }
 }
