@@ -130,3 +130,23 @@
     display: none;
   }
 }
+
+/*
+ * Screen-reader-only announcement region. Standard sr-only pattern —
+ * element stays in the DOM (so AT reads its content), but it's removed
+ * from the visible layout. Added in PR C, but the matching rule was
+ * accidentally placed in InsertDialog.module.css instead of here, so
+ * `styles.srOnly` resolved to undefined and the announcement text
+ * showed visibly next to the SAVED badge in the header.
+ */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
