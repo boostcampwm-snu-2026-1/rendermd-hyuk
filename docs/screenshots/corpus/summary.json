@@ -1,0 +1,151 @@
+{
+  "site": "https://boostcampwm-snu-2026-1.github.io/rendermd-hyuk/",
+  "results": [
+    {
+      "name": "01-math-mixed-delimiters.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 4,
+        "katexAny": 6,
+        "hljs": 0,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "katexDisplay": 4,
+        "katexAny": 6,
+        "noConsoleErrors": true
+      }
+    },
+    {
+      "name": "02-code-blocks.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 0,
+        "katexAny": 0,
+        "hljs": 3,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "hljs": 3,
+        "noConsoleErrors": true
+      }
+    },
+    {
+      "name": "03-tables.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 0,
+        "katexAny": 0,
+        "hljs": 0,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "noConsoleErrors": true
+      }
+    },
+    {
+      "name": "04-korean-and-emoji.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 1,
+        "katexAny": 1,
+        "hljs": 0,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "katexDisplay": 1,
+        "noConsoleErrors": true
+      }
+    },
+    {
+      "name": "05-nested-gfm.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 0,
+        "katexAny": 2,
+        "hljs": 0,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "katexAny": 1,
+        "noConsoleErrors": true
+      }
+    },
+    {
+      "name": "06-long-paragraph.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 0,
+        "katexAny": 0,
+        "hljs": 0,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "noConsoleErrors": true
+      }
+    },
+    {
+      "name": "07-page-break.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 0,
+        "katexAny": 0,
+        "hljs": 0,
+        "pageBreaks": 3,
+        "errors": []
+      },
+      "expected": {
+        "pageBreaks": 3,
+        "noConsoleErrors": true
+      }
+    },
+    {
+      "name": "08-empty.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 0,
+        "katexAny": 0,
+        "hljs": 0,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "smokeOnly": true
+      }
+    },
+    {
+      "name": "09-headings-only.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 0,
+        "katexAny": 0,
+        "hljs": 0,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "noConsoleErrors": true
+      }
+    },
+    {
+      "name": "10-edge-cases.md",
+      "pass": true,
+      "observed": {
+        "katexDisplay": 0,
+        "katexAny": 0,
+        "hljs": 1,
+        "pageBreaks": 0,
+        "errors": []
+      },
+      "expected": {
+        "noConsoleErrors": true
+      }
+    }
+  ]
+}
