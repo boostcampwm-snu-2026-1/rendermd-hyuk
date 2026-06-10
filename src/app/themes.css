@@ -107,6 +107,22 @@ body {
 }
 
 /*
+ * Math display alignment, driven by `[data-math-align]` on <html>.
+ *
+ * KaTeX defaults to text-align: center on `.katex-display`. Users who
+ * want their math left-flush (closer to how prose-heavy documents lay
+ * out equations) can opt in. The selector targets the global attribute,
+ * not a CSS-Module-hashed class, so it works in both screen and print
+ * without an extra rule in print.css.
+ *
+ * The `\begin{aligned}` env still left-justifies the column LEFT OF `&`
+ * per LaTeX semantics — this rule only moves the BLOCK's outer alignment.
+ */
+[data-math-align='left'] .katex-display {
+  text-align: left;
+}
+
+/*
  * Theme-aware scrollbars.
  *
  * Thumb color derives from the current --fg via color-mix so it

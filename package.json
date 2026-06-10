@@ -19,7 +19,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,json,md,css,yml,yaml}\"",
     "test": "vitest",
     "test:run": "vitest run --passWithNoTests",
-    "test:coverage": "vitest run --coverage --passWithNoTests"
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "knip": "knip"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",
@@ -57,6 +58,7 @@
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "husky": "^9.1.6",
     "jsdom": "^29.1.1",
+    "knip": "^6.16.1",
     "lint-staged": "^17.0.5",
     "playwright": "^1.60.0",
     "prettier": "^3.3.3",
