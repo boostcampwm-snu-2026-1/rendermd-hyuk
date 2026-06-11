@@ -37,48 +37,12 @@
  *   - `$$...$$` inside inline `code` spans — same.
  */
 
-// Matches the start of a fenced code block: indent up to 3 spaces, then a
-// run of 3+ backticks or 3+ tildes. The first capture is the fence chars.
-const FENCE_OPEN = /^( {0,3})(`{3,}|~{3,})/;
+import { splitCodeAndText } from './split-code-text';
 
 export function canonicalizeBlockMath(src: string): string {
-  // Phase 1: split the source into alternating code / non-code chunks. We
-  // honor fence length and char per CommonMark — a fence closes only when
-  // the matching char is repeated >= the open length.
-  const chunks: { kind: 'code' | 'text'; value: string }[] = [];
-  const lines = src.split('\n');
-  let i = 0;
-  let buf: string[] = [];
-
-  while (i < lines.length) {
-    const open = lines[i].match(FENCE_OPEN);
-    if (open) {
-      if (buf.length) {
-        chunks.push({ kind: 'text', value: buf.join('\n') });
-        buf = [];
-      }
-      const fenceChar = open[2][0];
-      const fenceMin = open[2].length;
-      const closeRe = new RegExp(`^ {0,3}${fenceChar === '`' ? '`' : '~'}{${fenceMin},}\\s*$`);
-      const block: string[] = [lines[i]];
-      i++;
-      while (i < lines.length) {
-        block.push(lines[i]);
-        if (closeRe.test(lines[i])) {
-          i++;
-          break;
-        }
-        i++;
-      }
-      chunks.push({ kind: 'code', value: block.join('\n') });
-      continue;
-    }
-    buf.push(lines[i]);
-    i++;
-  }
-  if (buf.length) chunks.push({ kind: 'text', value: buf.join('\n') });
-
-  return chunks.map((c) => (c.kind === 'code' ? c.value : transformTextChunk(c.value))).join('\n');
+  return splitCodeAndText(src)
+    .map((c) => (c.kind === 'code' ? c.value : transformTextChunk(c.value)))
+    .join('\n');
 }
 
 function transformTextChunk(text: string): string {

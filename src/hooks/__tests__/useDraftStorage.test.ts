@@ -122,8 +122,11 @@ describe('useDraftStorage', () => {
       window.dispatchEvent(new Event('pagehide'));
     });
 
+    // Unload path writes synchronously but intentionally skips the
+    // 'saving' → 'saved' status flip — the tab is going away, and
+    // setState during teardown is either lost or warned about.
     expect(setItemSpy).toHaveBeenCalledWith(STORAGE_KEY, 'unsaved');
-    expect(result.current.status).toBe('saved');
+    expect(result.current.status).toBe('saving');
   });
 
   it('syncs from another tab via storage event', () => {
