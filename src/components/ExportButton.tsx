@@ -1,82 +1,29 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FileDown, Loader } from 'lucide-react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { isIOSSafari } from '@/util/platform';
 import styles from './ExportButton.module.css';
-
-const FOCUSABLE_SELECTOR =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function ExportButton() {
   const [showGuide, setShowGuide] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const continueButtonRef = useRef<HTMLButtonElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
   // Tracks whether the mouse/touch started ON the backdrop, so a click-drag
   // from modal interior to backdrop doesn't accidentally close the dialog.
   const backdropPointerDownRef = useRef(false);
 
+  const closeGuide = useCallback(() => setShowGuide(false), []);
+  useFocusTrap({ active: showGuide, containerRef: modalRef, onEscape: closeGuide });
+
+  // Initial focus belongs on the primary action (Continue). Defer via rAF
+  // so iOS Safari doesn't silently reject focus() during the modal's
+  // display-block transition.
   useEffect(() => {
     if (!showGuide) return;
-
-    previousFocusRef.current = (document.activeElement as HTMLElement) ?? null;
-    // Defer focus to the next frame: the modal is mounted in the DOM but
-    // may not have finished its display-block transition. iOS Safari in
-    // particular silently rejects focus() on an element whose computed
-    // visibility is mid-flip, leaving focus on <body>.
     const rafId = requestAnimationFrame(() => continueButtonRef.current?.focus());
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowGuide(false);
-        return;
-      }
-      if (e.key !== 'Tab') return;
-
-      const modal = modalRef.current;
-      if (!modal) return;
-      const focusable = modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      // Focus might have escaped the modal (e.g., user clicked an iframe).
-      // Re-anchor inside before trapping.
-      if (!modal.contains(document.activeElement)) {
-        e.preventDefault();
-        first.focus();
-        return;
-      }
-
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      // If the previously-focused element has since left the DOM (e.g. its
-      // host re-mounted), focus() is a no-op and we end up on <body>.
-      // Fall back to the document body explicitly so SR users hear the
-      // landmark transition rather than nothing.
-      const prev = previousFocusRef.current;
-      if (prev && document.contains(prev)) {
-        prev.focus();
-      } else {
-        document.body.focus?.();
-      }
-    };
+    return () => cancelAnimationFrame(rafId);
   }, [showGuide]);
 
   // True while we've called window.print() and the browser hasn't yet

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import styles from './InsertDialog.module.css';
 
 export type InsertKind = 'link' | 'image';
@@ -13,9 +14,6 @@ interface InsertDialogProps {
   onSubmit: (url: string, text: string) => void;
 }
 
-const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 export function InsertDialog({ kind, initialText = '', onCancel, onSubmit }: InsertDialogProps) {
   const urlId = useId();
   const textId = useId();
@@ -23,7 +21,6 @@ export function InsertDialog({ kind, initialText = '', onCancel, onSubmit }: Ins
   const descId = useId();
   const dialogRef = useRef<HTMLFormElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
   const backdropPointerDownRef = useRef(false);
 
   const [url, setUrl] = useState('');
@@ -35,46 +32,14 @@ export function InsertDialog({ kind, initialText = '', onCancel, onSubmit }: Ins
   const textPlaceholder = kind === 'link' ? 'visible link text' : 'description for screen readers';
   const submitLabel = 'Insert';
 
-  useEffect(() => {
-    // Restore focus to the previously-focused element on close — usually
-    // the toolbar button that opened the dialog.
-    previousFocusRef.current = (document.activeElement as HTMLElement) ?? null;
-    urlInputRef.current?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+  useFocusTrap({ active: true, containerRef: dialogRef, onEscape: onCancel });
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCancel();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = dialog.querySelectorAll<HTMLElement>(FOCUSABLE);
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!dialog.contains(document.activeElement)) {
-        e.preventDefault();
-        first.focus();
-        return;
-      }
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previousFocusRef.current?.focus?.();
-    };
-  }, [onCancel]);
+  // Initial focus belongs in the dialog (the URL input) — useFocusTrap
+  // only handles cycling, not first-focus selection.
+  useEffect(() => {
+    const rafId = requestAnimationFrame(() => urlInputRef.current?.focus());
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   const description =
     kind === 'link'
