@@ -33,9 +33,7 @@ export function Logo({ size = 20, strokeWidth = 2, className, title = 'rendermd'
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
-      {...(decorative
-        ? { 'aria-hidden': true, focusable: false }
-        : { role: 'img', 'aria-label': title })}
+      {...(decorative ? { 'aria-hidden': true } : { role: 'img', 'aria-label': title })}
     >
       <path d="M12 2 L22 12 L12 22 L2 12 Z" />
       <line x1="8" y1="11" x2="16" y2="11" />

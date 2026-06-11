@@ -39,13 +39,13 @@ const PreviewPane = dynamic(() => import('@/components/PreviewPane').then((m) =>
 // doesn't reflow when the switcher pops in.
 const ThemeSwitcher = dynamic(
   () => import('@/components/ThemeSwitcher').then((m) => m.ThemeSwitcher),
-  { ssr: false, loading: () => <HeaderSlotPlaceholder width={132} label="Theme" /> },
+  { ssr: false, loading: () => <HeaderSlotPlaceholder width={132} /> },
 );
 
 // Same reason as ThemeSwitcher (controlled <select>).
 const MathAlignSwitcher = dynamic(
   () => import('@/components/MathAlignSwitcher').then((m) => m.MathAlignSwitcher),
-  { ssr: false, loading: () => <HeaderSlotPlaceholder width={120} label="Math align" /> },
+  { ssr: false, loading: () => <HeaderSlotPlaceholder width={120} /> },
 );
 
 // Toolbar pulls 11 lucide-react icons (~25 kB) + the @codemirror/state
