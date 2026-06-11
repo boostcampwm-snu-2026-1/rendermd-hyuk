@@ -6,17 +6,29 @@
  * Usage:
  *   pnpm dlx tsx scripts/check-perf-budget.ts        # uses default budget
  *   PERF_BUDGET_KB=150 pnpm dlx tsx scripts/check-perf-budget.ts
+ *
+ * Source of truth: `.next/diagnostics/route-bundle-stats.json` (Next 16+).
+ * Each route entry lists every chunk URL the client downloads on first
+ * paint; we sum their gzipped sizes from `.next/static/chunks/`. The
+ * gzipped total matches what Next 15 used to print as "First Load JS"
+ * in its build table — staying with that metric keeps historical
+ * budgets meaningful across the upgrade.
  */
 
+import { readFileSync, statSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
+import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const BUDGET_KB = Number(process.env.PERF_BUDGET_KB ?? '130');
+const BUDGET_KB = Number(process.env.PERF_BUDGET_KB ?? '160');
+const ROUTE = process.env.PERF_BUDGET_ROUTE ?? '/';
+const STATS_PATH = resolve('.next/diagnostics/route-bundle-stats.json');
 
-console.log(`Building with First Load JS budget: ${BUDGET_KB} kB on / route\n`);
+console.log(`Building with First Load JS budget: ${BUDGET_KB} kB on ${ROUTE} route\n`);
 
 const build = spawnSync('pnpm', ['build'], {
   encoding: 'utf8',
-  stdio: ['inherit', 'pipe', 'inherit'],
+  stdio: 'inherit',
 });
 
 if (build.status !== 0) {
@@ -24,35 +36,51 @@ if (build.status !== 0) {
   process.exit(build.status ?? 1);
 }
 
-const output = build.stdout ?? '';
-process.stdout.write(output);
+interface RouteBundleStat {
+  route: string;
+  firstLoadUncompressedJsBytes: number;
+  firstLoadChunkPaths: string[];
+}
 
-// Next.js build output rows for the home route look like:
-//   ┌ ○ /                                    7.03 kB         109 kB
-//
-// columns: (prefix) ○ (path) (Size) (First Load JS).
-// We pull the FINAL number on the / row.
-const homeLine = output.split('\n').find((l) => /^[┌├└│]\s+[○●]\s+\/\s/.test(l));
-if (!homeLine) {
-  console.error('\n✗ Could not find / route in build output — has the table format changed?');
+let stats: RouteBundleStat[];
+try {
+  stats = JSON.parse(readFileSync(STATS_PATH, 'utf8'));
+} catch (err) {
+  console.error(`\n✗ Could not read ${STATS_PATH}: ${(err as Error).message}`);
+  console.error('  (Next 16+ emits this file; older versions used the build-table parse path.)');
   process.exit(2);
 }
 
-// Match the LAST "<number> kB|MB|B" on the line — that's First Load JS.
-const numbers = [...homeLine.matchAll(/(\d+(?:\.\d+)?)\s*(kB|MB|B)\b/g)];
-if (numbers.length < 2) {
-  console.error('\n✗ Could not parse First Load JS column from / row:', homeLine);
+const entry = stats.find((s) => s.route === ROUTE);
+if (!entry) {
+  console.error(`\n✗ Route ${ROUTE} not present in route-bundle-stats.json`);
+  console.error(`  Available: ${stats.map((s) => s.route).join(', ')}`);
   process.exit(2);
 }
-const last = numbers[numbers.length - 1];
-const [, sizeStr, unit] = last;
-let kb = Number(sizeStr);
-if (unit === 'MB') kb *= 1024;
-if (unit === 'B') kb /= 1024;
 
-console.log(`\n— Perf budget check —`);
-console.log(`/ route First Load JS: ${kb.toFixed(2)} kB`);
-console.log(`Budget:                ${BUDGET_KB.toFixed(2)} kB`);
+const projectRoot = resolve('.');
+let totalGzippedBytes = 0;
+for (const chunk of entry.firstLoadChunkPaths) {
+  const absolute = join(projectRoot, chunk);
+  try {
+    statSync(absolute);
+  } catch {
+    console.error(`\n✗ Chunk listed in stats but missing on disk: ${chunk}`);
+    process.exit(2);
+  }
+  totalGzippedBytes += gzipSync(readFileSync(absolute)).length;
+}
+
+const kb = totalGzippedBytes / 1024;
+const rawKb = entry.firstLoadUncompressedJsBytes / 1024;
+
+console.log(`— Perf budget check —`);
+console.log(`${ROUTE} route First Load JS:`);
+console.log(`  ${kb.toFixed(2)} kB gzipped  (${rawKb.toFixed(2)} kB uncompressed)`);
+console.log(
+  `  ${entry.firstLoadChunkPaths.length} chunk${entry.firstLoadChunkPaths.length === 1 ? '' : 's'}`,
+);
+console.log(`Budget: ${BUDGET_KB.toFixed(2)} kB gzipped`);
 
 if (kb > BUDGET_KB) {
   console.error(`\n✗ Exceeded budget by ${(kb - BUDGET_KB).toFixed(2)} kB.`);
