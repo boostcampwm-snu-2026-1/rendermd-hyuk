@@ -21,7 +21,11 @@ export function ExportButton() {
     if (!showGuide) return;
 
     previousFocusRef.current = (document.activeElement as HTMLElement) ?? null;
-    continueButtonRef.current?.focus();
+    // Defer focus to the next frame: the modal is mounted in the DOM but
+    // may not have finished its display-block transition. iOS Safari in
+    // particular silently rejects focus() on an element whose computed
+    // visibility is mid-flip, leaving focus on <body>.
+    const rafId = requestAnimationFrame(() => continueButtonRef.current?.focus());
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -59,9 +63,19 @@ export function ExportButton() {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
-      previousFocusRef.current?.focus?.();
+      // If the previously-focused element has since left the DOM (e.g. its
+      // host re-mounted), focus() is a no-op and we end up on <body>.
+      // Fall back to the document body explicitly so SR users hear the
+      // landmark transition rather than nothing.
+      const prev = previousFocusRef.current;
+      if (prev && document.contains(prev)) {
+        prev.focus();
+      } else {
+        document.body.focus?.();
+      }
     };
   }, [showGuide]);
 
@@ -74,11 +88,14 @@ export function ExportButton() {
   const callPrint = () => {
     // Some sandboxed iframes / PWAs throw on window.print(). Failing
     // silently leaves the user wondering why nothing happened — log so
-    // the next debugging session has a trail.
+    // the next debugging session has a trail (dev only; production
+    // consoles stay clean).
     try {
       window.print();
     } catch (err) {
-      console.warn('[ExportButton] window.print() rejected', err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[ExportButton] window.print() rejected', err);
+      }
     } finally {
       setPreparing(false);
     }

@@ -37,7 +37,7 @@ function StatusIcon({ status }: { status: Status }) {
 }
 
 export function SaveStatusIndicator({ status, errorKind, onRetry }: SaveStatusProps) {
-  const hint = status === 'error' ? (ERROR_HINT[errorKind ?? 'unknown'] ?? null) : null;
+  const hint = status === 'error' ? ERROR_HINT[errorKind ?? 'unknown'] : null;
   // Two-region pattern: the always-visible status indicator stays put
   // for sighted users, and a sibling aria-live region only contains text
   // for states we WANT announced (saved / error). Toggling `aria-live`
