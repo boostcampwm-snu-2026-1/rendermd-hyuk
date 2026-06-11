@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 export type MathAlign = 'center' | 'left';
 
@@ -38,13 +46,15 @@ export function MathAlignProvider({ children }: { children: ReactNode }) {
   // Same SSR-state-mismatch safety net as ThemeContext: on static export
   // the build runs without `document` and bakes 'center' into the HTML.
   // React doesn't re-run the lazy initializer on hydration, so if the
-  // inline script applied a different value we'd be stuck. Re-sync.
+  // inline script applied a different value we'd be stuck. Re-sync with
+  // a functional setter so the update no-ops when nothing changed.
   useEffect(() => {
     const current = document.documentElement.dataset.mathAlign;
-    if (isMathAlign(current) && current !== align) {
-      setAlignState(current);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!isMathAlign(current)) return;
+    // Bridges a pre-React inline script's DOM state into React state on
+    // first paint after hydration — the canonical use case for this rule.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAlignState((prev) => (current !== prev ? current : prev));
   }, []);
 
   const setAlign = useCallback((next: MathAlign) => {
@@ -57,9 +67,9 @@ export function MathAlignProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  return (
-    <MathAlignContext.Provider value={{ align, setAlign }}>{children}</MathAlignContext.Provider>
-  );
+  const value = useMemo<MathAlignContextValue>(() => ({ align, setAlign }), [align, setAlign]);
+
+  return <MathAlignContext.Provider value={value}>{children}</MathAlignContext.Provider>;
 }
 
 export function useMathAlign(): MathAlignContextValue {
