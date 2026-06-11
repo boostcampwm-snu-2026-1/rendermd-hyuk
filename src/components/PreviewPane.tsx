@@ -4,13 +4,16 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
+import type { PluggableList } from 'unified';
 import { remarkPageBreak } from '@/lib/remark-page-break';
 import { canonicalizeBlockMath } from '@/lib/canonicalize-block-math';
 import { normalizeLatexDelimiters } from '@/lib/normalize-latex-delimiters';
 import styles from './PreviewPane.module.css';
 
-const REMARK_PLUGINS = [remarkGfm, remarkMath, remarkPageBreak];
-const REHYPE_PLUGINS = [rehypeKatex, rehypeHighlight];
+// Typed as `PluggableList` so a stray `undefined` (missing import) is
+// caught at compile time instead of crashing react-markdown at runtime.
+const REMARK_PLUGINS: PluggableList = [remarkGfm, remarkMath, remarkPageBreak];
+const REHYPE_PLUGINS: PluggableList = [rehypeKatex, rehypeHighlight];
 
 interface PreviewPaneProps {
   markdown: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import CodeMirror, { type Extension } from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -85,6 +85,11 @@ export function EditorPane({
   onActiveMarksChange,
   onInsertLinkRequest,
 }: EditorPaneProps) {
+  // Cache the last reported ActiveMarks so we only notify the parent
+  // (which re-renders the Toolbar) when the formatting context actually
+  // changes — not on every cursor move inside a single paragraph.
+  const lastActiveRef = useRef<ActiveMarks | null>(null);
+
   // Dialog-opening shortcuts need access to the parent's callbacks, so
   // their keymap can't be a module constant like FORMAT_KEYMAP. Memoize
   // it so CodeMirror only reconfigures when the callbacks actually
@@ -124,12 +129,33 @@ export function EditorPane({
         height="100%"
         onCreateEditor={(view) => {
           onCreateEditor?.(view);
-          onActiveMarksChange?.(getActiveMarks(view.state));
+          const active = getActiveMarks(view.state);
+          lastActiveRef.current = active;
+          onActiveMarksChange?.(active);
         }}
         onUpdate={(update) => {
-          if (update.selectionSet || update.docChanged) {
-            onActiveMarksChange?.(getActiveMarks(update.state));
+          if (!update.selectionSet && !update.docChanged) return;
+          const next = getActiveMarks(update.state);
+          const prev = lastActiveRef.current;
+          // Shallow-compare against the last reported value — skip the
+          // parent setState (and the Toolbar re-render) when nothing
+          // changed. All 9 ActiveMarks fields are primitive.
+          if (
+            prev != null &&
+            prev.bold === next.bold &&
+            prev.italic === next.italic &&
+            prev.strike === next.strike &&
+            prev.inlineCode === next.inlineCode &&
+            prev.heading === next.heading &&
+            prev.bullet === next.bullet &&
+            prev.ordered === next.ordered &&
+            prev.todo === next.todo &&
+            prev.quote === next.quote
+          ) {
+            return;
           }
+          lastActiveRef.current = next;
+          onActiveMarksChange?.(next);
         }}
       />
     </div>
