@@ -38,20 +38,25 @@ const ENV_MATH = Decoration.mark({ class: 'cm-math cm-math-env' });
 
 /**
  * Single-line `$ ... $` — no whitespace immediately after `$open` or
- * before `$close`, no surrounding `$` (to avoid matching half of `$$`).
- * The capture is intentionally simple; complex Cases are rare in this
- * highlighter's scope (we don't need parse-tree perfection).
+ * before `$close`, no surrounding `$` (to avoid matching half of `$$`),
+ * and no backslash before `$open` (so `\$5` in prose is not opened as
+ * math). The capture is intentionally simple; complex cases are rare
+ * in this highlighter's scope (we don't need parse-tree perfection).
  */
-const RE_INLINE_DOLLAR = /(?<!\$)\$(?!\$)(?!\s)([^$\n]+?)(?<!\s)\$(?!\$)/g;
+const RE_INLINE_DOLLAR = /(?<![$\\])\$(?!\$)(?!\s)([^$\n]+?)(?<!\s)\$(?!\$)/g;
 
 /** `\( ... \)` inline. Backslash-pair, content can't span lines. */
 const RE_INLINE_PAREN = /\\\(([^\n]+?)\\\)/g;
 
-/** `$$ ... $$` block. Multi-line allowed; non-greedy on the inner. */
-const RE_BLOCK_DOLLAR = /\$\$([\s\S]+?)\$\$/g;
+/**
+ * `$$ ... $$` block. Multi-line allowed; non-greedy on the inner.
+ * Bounded length (16 KB) so an unclosed `$$` near the top of a long
+ * document doesn't make the scan re-run to EOF on every keystroke.
+ */
+const RE_BLOCK_DOLLAR = /\$\$([\s\S]{1,16384}?)\$\$/g;
 
-/** `\[ ... \]` block. Multi-line allowed. */
-const RE_BLOCK_BRACKET = /\\\[([\s\S]+?)\\\]/g;
+/** `\[ ... \]` block. Multi-line allowed. Same length bound as above. */
+const RE_BLOCK_BRACKET = /\\\[([\s\S]{1,16384}?)\\\]/g;
 
 /**
  * Bare `\begin{env}...\end{env}` outside any delimiters. The preview
@@ -70,6 +75,10 @@ function build(view: EditorView): DecorationSet {
   const hits: Hit[] = [];
   for (const { from, to } of view.visibleRanges) {
     const text = view.state.doc.sliceString(from, to);
+    // Early-out: if the slice contains no math trigger characters,
+    // skip the regex sweeps entirely. Cheap test — saves ~5 regex
+    // scans per viewport on plain-prose documents typed in real time.
+    if (!/[$\\]/.test(text)) continue;
     const push = (re: RegExp, deco: Decoration) => {
       re.lastIndex = 0;
       let m: RegExpExecArray | null;
@@ -89,6 +98,10 @@ function build(view: EditorView): DecorationSet {
   // matters because RE_BLOCK_DOLLAR's match contains $...$ pairs that
   // RE_INLINE_DOLLAR would also try to mark, and RangeSetBuilder
   // requires non-overlapping ranges sorted by start.
+  //
+  // `>=` is intentional — CodeMirror ranges are [from, to) so a hit
+  // starting exactly at the previous hit's `to` is adjacent, not
+  // overlapping, and should be kept.
   const filtered: Hit[] = [];
   let lastTo = -1;
   for (const h of hits) {

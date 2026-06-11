@@ -19,6 +19,16 @@ import type { EditorState } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import type { ActiveMarks } from './editor-active-types';
 
+// Structural subset of @lezer/common's SyntaxNode that covers the two
+// surfaces we use (name, parent). Importing the real type would mean
+// adding @lezer/common as a direct dep just for a type — the structural
+// match here is enough for type safety and TypeScript will catch a name
+// rename via the read sites in `getActiveMarks`.
+interface SyntaxNodeShape {
+  name: string;
+  parent: SyntaxNodeShape | null;
+}
+
 export { type ActiveMarks, EMPTY_ACTIVE } from './editor-active-types';
 
 export function getActiveMarks(state: EditorState): ActiveMarks {
@@ -27,7 +37,7 @@ export function getActiveMarks(state: EditorState): ActiveMarks {
 
   // Walk inline ancestors at the cursor. resolveInner finds the deepest
   // node containing pos; we climb its parent chain checking node names.
-  let node: { name: string; parent: typeof node } | null = tree.resolveInner(pos, -1);
+  let node: SyntaxNodeShape | null = tree.resolveInner(pos, -1);
   let bold = false;
   let italic = false;
   let strike = false;

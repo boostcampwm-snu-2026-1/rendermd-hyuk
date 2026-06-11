@@ -109,11 +109,27 @@ export function useDraftStorage(fallback: string): UseDraftStorageReturn {
     setErrorKind(res.ok ? null : res.errorKind);
   }, []);
 
-  // Synchronous flush — used by event handlers that may be the last chance
-  // before the page unloads. Also doubles as the manual-save entry point
-  // (Cmd/Ctrl+S) — if nothing is pending we still flip 'saving' → 'saved'
-  // briefly so the user gets visible confirmation that their explicit
-  // action was acknowledged.
+  // Write-only flush — no UI side effects. Used by paths that run
+  // during unload (`pagehide` / `beforeunload`) and during unmount,
+  // where a queued `setState('saving'/'saved')` is either lost or
+  // warns about updating an unmounted component.
+  const writeOnlyFlush = useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (!hasPendingWriteRef.current) return;
+    // Synchronous write — writeStorage is localStorage.setItem; no
+    // async hops. If the write fails (quota / private mode) there's
+    // nothing the user can do at unload time anyway; swallow.
+    writeStorage(pendingValueRef.current);
+    hasPendingWriteRef.current = false;
+  }, []);
+
+  // Synchronous flush with UI feedback — the manual-save entry point
+  // (Cmd/Ctrl+S). If nothing is pending we still flip 'saving' →
+  // 'saved' briefly so the user gets visible confirmation that their
+  // explicit action was acknowledged.
   const flushPending = useCallback(() => {
     if (!hasPendingWriteRef.current) {
       setStatus('saving');
@@ -128,14 +144,13 @@ export function useDraftStorage(fallback: string): UseDraftStorageReturn {
   }, [applyWriteResult]);
 
   useEffect(() => {
-    const handler = () => flushPending();
-    window.addEventListener('pagehide', handler);
-    window.addEventListener('beforeunload', handler);
+    window.addEventListener('pagehide', writeOnlyFlush);
+    window.addEventListener('beforeunload', writeOnlyFlush);
     return () => {
-      window.removeEventListener('pagehide', handler);
-      window.removeEventListener('beforeunload', handler);
+      window.removeEventListener('pagehide', writeOnlyFlush);
+      window.removeEventListener('beforeunload', writeOnlyFlush);
     };
-  }, [flushPending]);
+  }, [writeOnlyFlush]);
 
   useEffect(() => {
     const handler = (e: StorageEvent) => {
@@ -157,12 +172,13 @@ export function useDraftStorage(fallback: string): UseDraftStorageReturn {
 
   useEffect(() => {
     return () => {
-      flushPending();
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
+      // Unmount path: write the buffered value to storage but DON'T
+      // touch React state — setters on an unmounted component are
+      // either lost (strict mode) or warned about, and the user
+      // can't see status updates after the component is gone anyway.
+      writeOnlyFlush();
     };
-  }, [flushPending]);
+  }, [writeOnlyFlush]);
 
   const setValue = useCallback(
     (next: string) => {

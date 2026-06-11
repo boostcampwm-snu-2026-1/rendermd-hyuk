@@ -30,46 +30,12 @@
  *     delimiter.
  */
 
-const FENCE_OPEN = /^( {0,3})(`{3,}|~{3,})/;
+import { splitCodeAndText } from './split-code-text';
 
 export function normalizeLatexDelimiters(src: string): string {
-  // Split into code / non-code chunks (same approach as
-  // canonicalize-block-math, kept duplicated rather than abstracted
-  // because the two passes have different state needs).
-  const chunks: { kind: 'code' | 'text'; value: string }[] = [];
-  const lines = src.split('\n');
-  let i = 0;
-  let buf: string[] = [];
-
-  while (i < lines.length) {
-    const open = lines[i].match(FENCE_OPEN);
-    if (open) {
-      if (buf.length) {
-        chunks.push({ kind: 'text', value: buf.join('\n') });
-        buf = [];
-      }
-      const fenceChar = open[2][0];
-      const fenceMin = open[2].length;
-      const closeRe = new RegExp(`^ {0,3}${fenceChar === '`' ? '`' : '~'}{${fenceMin},}\\s*$`);
-      const block: string[] = [lines[i]];
-      i++;
-      while (i < lines.length) {
-        block.push(lines[i]);
-        if (closeRe.test(lines[i])) {
-          i++;
-          break;
-        }
-        i++;
-      }
-      chunks.push({ kind: 'code', value: block.join('\n') });
-      continue;
-    }
-    buf.push(lines[i]);
-    i++;
-  }
-  if (buf.length) chunks.push({ kind: 'text', value: buf.join('\n') });
-
-  return chunks.map((c) => (c.kind === 'code' ? c.value : transformTextChunk(c.value))).join('\n');
+  return splitCodeAndText(src)
+    .map((c) => (c.kind === 'code' ? c.value : transformTextChunk(c.value)))
+    .join('\n');
 }
 
 function transformTextChunk(text: string): string {
