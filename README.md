@@ -41,6 +41,12 @@ Rationale: [docs/proposal.md](./docs/proposal.md)
 
 ## Demo
 
+### Walkthrough video
+
+[![Watch demo — 3:25](./docs/screenshots/demo-thumbnail.png)](https://github.com/boostcampwm-snu-2026-1/rendermd-hyuk/releases/download/demo-v1/demo.mp4)
+
+Narrated 3:25 walkthrough — paste, live preview, toolbar formatting, slash menu, themes, math alignment, and PDF export. 1920×1080 · H.264 · 12 MB.
+
 ### User flow
 
 ```mermaid
