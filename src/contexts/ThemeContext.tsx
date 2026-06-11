@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 export type Theme = 'light' | 'dark' | 'sepia' | 'hc';
 
@@ -45,14 +53,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // the SSR initial state (the lazy initializer is NOT re-run if the
   // hydrated tree matches), so without this effect the React state stays
   // 'light' even when the inline script set <html data-theme='dark'>.
-  // Re-sync on mount.
+  // The functional setter form makes the update a no-op when nothing
+  // changed — so re-running the effect (StrictMode in dev) is idempotent.
   useEffect(() => {
     const current = document.documentElement.dataset.theme;
-    if (isTheme(current) && current !== theme) {
-      setThemeState(current);
-    }
-    // theme intentionally omitted from deps — only run once on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!isTheme(current)) return;
+    // Bridges a pre-React inline script's DOM state into React state on
+    // first paint after hydration — the canonical use case for this rule.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setThemeState((prev) => (current !== prev ? current : prev));
   }, []);
 
   const setTheme = useCallback((next: Theme) => {
@@ -65,7 +74,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+  const value = useMemo<ThemeContextValue>(() => ({ theme, setTheme }), [theme, setTheme]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {

@@ -88,13 +88,19 @@ export function useDraftStorage(fallback: string): UseDraftStorageReturn {
   const timerRef = useRef<number | null>(null);
 
   // Load saved draft once after mount.
+  //
+  // Static export bakes `fallback` into the SSR HTML, so the hydrated
+  // tree starts with `value = fallback` regardless of any localStorage
+  // restore that ran in the pre-React inline path. Read once on mount
+  // and lift the saved string into React state.
   useEffect(() => {
     const saved = readStorage();
-    if (saved !== null) {
-      setValueState(saved);
-      pendingValueRef.current = saved;
-      // Stay 'idle' on restore — the user hasn't typed yet this session.
-    }
+    if (saved === null) return;
+    pendingValueRef.current = saved;
+    // Restore-after-hydration is the intent of this effect — the setter
+    // call IS the contract. Stay 'idle': the user hasn't typed yet.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValueState(saved);
   }, []);
 
   const applyWriteResult = useCallback((res: WriteResult) => {

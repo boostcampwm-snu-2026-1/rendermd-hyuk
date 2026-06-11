@@ -188,6 +188,9 @@ const GROUPS: ButtonSpec[][] = [
 ];
 
 const FLAT_BUTTONS = GROUPS.flat();
+const FLAT_INDEX_BY_KEY: Record<string, number> = Object.fromEntries(
+  FLAT_BUTTONS.map((b, i) => [b.key, i]),
+);
 
 function selectionText(view: EditorView | null): string {
   if (view == null) return '';
@@ -208,9 +211,17 @@ export function Toolbar({
 
   // External keymap request (e.g. Mod-K from inside the editor): adopt
   // it as the dialog open state, then signal the parent to clear so the
-  // request is one-shot.
+  // request is one-shot. `consumedRef` guards against re-opening if
+  // `view` flips (theme toggle re-creates the editor view) while the
+  // parent is mid-batch and `openRequest` is still set.
+  const consumedRequestRef = useRef<InsertKind | null>(null);
   useEffect(() => {
-    if (openRequest == null) return;
+    if (openRequest == null) {
+      consumedRequestRef.current = null;
+      return;
+    }
+    if (consumedRequestRef.current === openRequest) return;
+    consumedRequestRef.current = openRequest;
     setInitialText(selectionText(view));
     setOpenDialog(openRequest);
     onConsumeOpenRequest?.();
@@ -228,19 +239,18 @@ export function Toolbar({
   // Only one button is in the tab order at a time. Arrow keys move
   // the focus within the toolbar. Home/End jump to the ends. Matches
   // the WAI-ARIA Authoring Practices for a horizontal toolbar.
+  //
+  // `current` is derived from the DOM (`document.activeElement`) inside
+  // the handler — no mirrored ref needed — so mouse focus and arrow
+  // focus stay in lock-step without ever reading stale closure state.
   const [focusIndex, setFocusIndex] = useState(0);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  // Mirror focusIndex in a ref so the key handler reads the CURRENT
-  // value — not the value captured when the handler closed. The
-  // button's onFocus also pushes new indices in (mouse focus, dialog
-  // close), so an arrow press right after a mouse click would
-  // otherwise stale-jump back to the old index.
-  const focusIndexRef = useRef(0);
-  focusIndexRef.current = focusIndex;
 
   const handleToolbarKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     const total = FLAT_BUTTONS.length;
-    const current = focusIndexRef.current;
+    const refs = buttonRefs.current;
+    const fromDom = refs.findIndex((el) => el === document.activeElement);
+    const current = fromDom >= 0 ? fromDom : 0;
     let next: number | null = null;
     switch (event.key) {
       case 'ArrowRight':
@@ -260,7 +270,7 @@ export function Toolbar({
     }
     event.preventDefault();
     setFocusIndex(next);
-    buttonRefs.current[next]?.focus();
+    refs[next]?.focus();
   }, []);
 
   // Stable onCancel: passing an inline arrow would re-trigger
@@ -268,8 +278,6 @@ export function Toolbar({
   // and re-installing the keydown trap + focus-restore mid-life. The
   // memoized version closes only over setOpenDialog (stable).
   const handleDialogCancel = useCallback(() => setOpenDialog(null), []);
-
-  let flatIndex = -1;
 
   return (
     <>
@@ -284,8 +292,7 @@ export function Toolbar({
         {GROUPS.map((group, groupIndex) => (
           <div key={groupIndex} className={styles.group} role="group">
             {group.map((b) => {
-              flatIndex += 1;
-              const idx = flatIndex;
+              const idx = FLAT_INDEX_BY_KEY[b.key];
               const isActive = b.kind === 'toggle' ? b.isActive(active) : false;
               const Icon = b.icon;
               return (
