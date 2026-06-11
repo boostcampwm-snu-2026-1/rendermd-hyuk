@@ -43,9 +43,9 @@ Rationale: [docs/proposal.md](./docs/proposal.md)
 
 ### Walkthrough video
 
-[![Watch demo — 3:25](./docs/screenshots/demo-thumbnail.png)](https://github.com/boostcampwm-snu-2026-1/rendermd-hyuk/releases/download/demo-v1/demo.mp4)
+https://github.com/user-attachments/assets/32a6935e-d4cf-4625-906e-2227c143653e
 
-Narrated 3:25 walkthrough — paste, live preview, toolbar formatting, slash menu, themes, math alignment, and PDF export. 1920×1080 · H.264 · 12 MB.
+Narrated 3:25 walkthrough — paste, live preview, toolbar formatting, slash menu, themes, math alignment, and PDF export. 1920×1080 · H.264 · 12 MB. Mirror: [`demo-v1` release asset](https://github.com/boostcampwm-snu-2026-1/rendermd-hyuk/releases/download/demo-v1/demo.mp4).
 
 ### User flow
 
