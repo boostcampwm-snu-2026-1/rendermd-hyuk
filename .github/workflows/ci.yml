@@ -46,7 +46,10 @@ jobs:
 
       - name: Build (with perf budget)
         env:
-          PERF_BUDGET_KB: 130
+          # Bumped from 130 → 160 to absorb Next 16's larger runtime
+          # (turbopack + new app-router bootstrap chunks add ~40 kB
+          # gzipped at the / route; baseline is 149.88 kB).
+          PERF_BUDGET_KB: 160
         run: pnpm exec tsx scripts/check-perf-budget.ts
 
       # Cache Playwright browsers across runs (~120 MB) so most PRs
