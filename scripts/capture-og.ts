@@ -11,12 +11,24 @@
  */
 
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const TEMPLATE = pathToFileURL(path.resolve('scripts/og-template.html')).href;
 const OG_OUT = path.resolve('src/app/opengraph-image.png');
 const APPLE_OUT = path.resolve('src/app/apple-icon.png');
+const ICON_SVG_PATH = path.resolve('src/app/icon.svg');
+
+// Read the canonical brand glyph from `src/app/icon.svg` so the apple-
+// icon, the favicon, and any future brand renders stay byte-identical.
+// Previously this script inlined a hand-written SVG that drifted away
+// from icon.svg over time.
+const ICON_PATHS =
+  readFileSync(ICON_SVG_PATH, 'utf8')
+    .replace(/<\?xml[^?]*\?>/, '')
+    .match(/<(?:path|line)[^/]*\/>/g)
+    ?.join('\n        ') ?? '';
 
 async function main() {
   const browser = await chromium.launch();
@@ -49,9 +61,7 @@ async function main() {
     </style></head><body>
       <svg width="118" height="118" viewBox="0 0 24 24" fill="none"
         stroke="#ededed" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2 L22 12 L12 22 L2 12 Z"/>
-        <line x1="8" y1="11" x2="16" y2="11"/>
-        <line x1="8" y1="15" x2="12" y2="15"/>
+        ${ICON_PATHS}
       </svg>
     </body></html>`);
     await page.screenshot({ path: APPLE_OUT, fullPage: false });
