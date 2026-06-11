@@ -24,9 +24,21 @@ import { chromium, type Page } from 'playwright';
 import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const SITE = process.env.SITE ?? 'https://boostcampwm-snu-2026-1.github.io/rendermd-hyuk/';
+const DEFAULT_SITE = 'https://boostcampwm-snu-2026-1.github.io/rendermd-hyuk/';
+const SITE = process.env.SITE ?? DEFAULT_SITE;
 const FIXTURES_DIR = path.resolve(process.cwd(), 'scripts/fixtures');
 const OUT_DIR = path.resolve(process.cwd(), 'docs/screenshots/corpus');
+
+// Loud warn when SITE wasn't set explicitly — otherwise a local "no
+// regressions" pass actually proved nothing about the working tree.
+if (!process.env.SITE) {
+  console.warn(
+    `[render-corpus] SITE env var not set — defaulting to ${DEFAULT_SITE}.\n` +
+      `             Local runs without SITE test the deployed production site,\n` +
+      `             NOT your working tree. Set SITE=http://localhost:PORT to\n` +
+      `             test the local build.`,
+  );
+}
 
 interface Expect {
   /** Minimum number of `.katex-display` block-math nodes. */

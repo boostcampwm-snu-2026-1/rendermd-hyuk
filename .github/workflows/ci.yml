@@ -6,6 +6,18 @@ on:
   push:
     branches: [main, dev]
 
+# Cancel an in-flight run when a new commit lands on the same ref —
+# the older one's results are about to be obsolete anyway. Saves the
+# heavy Playwright + corpus job a lot of duplicate work.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default. The job only reads the source tree; no
+# need for write access to contents, releases, packages, etc.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -33,7 +45,7 @@ jobs:
         run: pnpm lint:oxlint
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint --max-warnings 0
 
       - name: Type check
         run: pnpm typecheck
@@ -78,8 +90,18 @@ jobs:
             if curl -sf http://localhost:4173/ > /dev/null; then break; fi
             sleep 0.5
           done
+          if ! curl -sf http://localhost:4173/ > /dev/null; then
+            echo '✗ static server never became ready — serve.log:'
+            cat /tmp/serve.log
+            kill $SERVE_PID 2>/dev/null || true
+            exit 1
+          fi
           SITE=http://localhost:4173/ pnpm exec tsx scripts/render-corpus.ts
           STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo '--- serve.log (corpus run failed) ---'
+            cat /tmp/serve.log
+          fi
           kill $SERVE_PID 2>/dev/null || true
           exit $STATUS
 
