@@ -29,8 +29,6 @@ interface SyntaxNodeShape {
   parent: SyntaxNodeShape | null;
 }
 
-export { type ActiveMarks, EMPTY_ACTIVE } from './editor-active-types';
-
 export function getActiveMarks(state: EditorState): ActiveMarks {
   const pos = state.selection.main.head;
   const tree = syntaxTree(state);

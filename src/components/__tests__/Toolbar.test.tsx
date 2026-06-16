@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Toolbar } from '@/components/Toolbar';
-import { EMPTY_ACTIVE, type ActiveMarks } from '@/lib/editor-active';
+import { EMPTY_ACTIVE, type ActiveMarks } from '@/lib/editor-active-types';
 import type { EditorView } from '@codemirror/view';
 
 // Mock the command module so click verification doesn't require a

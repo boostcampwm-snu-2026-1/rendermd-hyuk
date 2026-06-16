@@ -129,16 +129,20 @@ export function useDraftStorage(fallback: string): UseDraftStorageReturn {
   // Synchronous flush with UI feedback — the manual-save entry point
   // (Cmd/Ctrl+S). If nothing is pending we still flip 'saving' →
   // 'saved' briefly so the user gets visible confirmation that their
-  // explicit action was acknowledged.
+  // explicit action was acknowledged. The 120 ms confirmation timer
+  // shares `timerRef` so the unmount cleanup below cancels it.
   const flushPending = useCallback(() => {
-    if (!hasPendingWriteRef.current) {
-      setStatus('saving');
-      window.setTimeout(() => setStatus('saved'), 120);
-      return;
-    }
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
+    }
+    if (!hasPendingWriteRef.current) {
+      setStatus('saving');
+      timerRef.current = window.setTimeout(() => {
+        timerRef.current = null;
+        setStatus('saved');
+      }, 120);
+      return;
     }
     applyWriteResult(writeStorage(pendingValueRef.current));
   }, [applyWriteResult]);
@@ -177,6 +181,12 @@ export function useDraftStorage(fallback: string): UseDraftStorageReturn {
       // either lost (strict mode) or warned about, and the user
       // can't see status updates after the component is gone anyway.
       writeOnlyFlush();
+      // Cancel any in-flight 'saved' confirmation timer so it doesn't
+      // setStatus after unmount.
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [writeOnlyFlush]);
 

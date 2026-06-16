@@ -22,13 +22,13 @@ describe('<ExportButton />', () => {
 
   it('renders an accessible Export PDF button', () => {
     render(<ExportButton />);
-    expect(screen.getByRole('button', { name: /export as pdf/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /export pdf/i })).toBeInTheDocument();
   });
 
   it('non-iOS: click calls window.print() immediately', async () => {
     const user = userEvent.setup();
     render(<ExportButton />);
-    await user.click(screen.getByRole('button', { name: /export as pdf/i }));
+    await user.click(screen.getByRole('button', { name: /export pdf/i }));
     expect(printSpy).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -37,7 +37,7 @@ describe('<ExportButton />', () => {
     vi.mocked(isIOSSafari).mockReturnValue(true);
     const user = userEvent.setup();
     render(<ExportButton />);
-    await user.click(screen.getByRole('button', { name: /export as pdf/i }));
+    await user.click(screen.getByRole('button', { name: /export pdf/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText(/saving as pdf on iphone/i)).toBeInTheDocument();
     expect(printSpy).not.toHaveBeenCalled();
@@ -47,7 +47,7 @@ describe('<ExportButton />', () => {
     vi.mocked(isIOSSafari).mockReturnValue(true);
     const user = userEvent.setup();
     render(<ExportButton />);
-    await user.click(screen.getByRole('button', { name: /export as pdf/i }));
+    await user.click(screen.getByRole('button', { name: /export pdf/i }));
     await user.click(screen.getByRole('button', { name: /continue/i }));
     // triggerPrint uses setTimeout(window.print, 0) to let the modal unmount,
     // so wait for the queued microtask to flush.

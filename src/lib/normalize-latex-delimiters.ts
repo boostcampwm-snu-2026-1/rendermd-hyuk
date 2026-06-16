@@ -54,10 +54,13 @@ function transformTextChunk(text: string): string {
 
 // `(?<!\\)` rejects an escaped backslash before the delimiter. `\\[`
 // in source is LaTeX for "literal [" and should NOT become `$$`.
-// Non-greedy `[\s\S]+?` so multiple bracket pairs in one chunk don't
-// merge into one giant block.
-const BRACKET_BLOCK = /(?<!\\)\\\[([\s\S]+?)(?<!\\)\\\]/g;
-const PAREN_INLINE = /(?<!\\)\\\(([\s\S]+?)(?<!\\)\\\)/g;
+// Non-greedy `[\s\S]{1,N}?` so multiple bracket pairs in one chunk
+// don't merge into one giant block AND a pathological un-closed
+// `\[` doesn't drag the engine across megabytes of input. 16384 for
+// block math (mirrors editor-math-decoration's RE_BLOCK_BRACKET cap);
+// 4096 for inline paren math (single-line by convention).
+const BRACKET_BLOCK = /(?<!\\)\\\[([\s\S]{1,16384}?)(?<!\\)\\\]/g;
+const PAREN_INLINE = /(?<!\\)\\\(([\s\S]{1,4096}?)(?<!\\)\\\)/g;
 
 function rewriteDelims(segment: string): string {
   return segment

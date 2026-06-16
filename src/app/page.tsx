@@ -114,13 +114,12 @@ export default function Home() {
            * the preview pane is the actual document, and react-markdown
            * emits an <h1> from `# Heading` at the top of that doc.
            * Having two <h1>s in the page outline confuses screen readers
-           * — the page's heading IS the user's document title. Render
-           * the brand as a non-heading div with role="img" + aria-label
-           * so it still has an accessible name.
+           * — the page's heading IS the user's document title. The plain
+           * <div> still surfaces the visible text "rendermd" as the
+           * accessible name; an aria-label override would silently drift
+           * if the visible string ever changed.
            */}
-          <div role="img" aria-label="rendermd" className={styles.wordmark}>
-            rendermd
-          </div>
+          <div className={styles.wordmark}>rendermd</div>
           <span className={styles.tagline}>markdown · preview · pdf</span>
         </div>
         <div className={styles.toolbar}>

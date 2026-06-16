@@ -63,7 +63,7 @@ const RE_BLOCK_BRACKET = /\\\[([\s\S]{1,16384}?)\\\]/g;
  * preprocessor normalizes these to `$$...$$` on the fly, so a user
  * sometimes ends up with an env-only line they want feedback on.
  */
-const RE_ENV_BARE = /\\begin\{([a-z*]+)\}([\s\S]+?)\\end\{\1\}/g;
+const RE_ENV_BARE = /\\begin\{([a-z*]+)\}([\s\S]{1,16384}?)\\end\{\1\}/g;
 
 interface Hit {
   from: number;
