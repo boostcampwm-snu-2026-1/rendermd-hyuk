@@ -52,6 +52,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/mdast": "^4.0.4",
     "@types/node": "^22.10.0",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.13.0",
@@ -62,7 +63,9 @@
     "knip": "^6.16.1",
     "lint-staged": "^17.0.7",
     "oxlint": "^1.69.0",
+    "pixelmatch": "^7.2.0",
     "playwright": "^1.60.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.3.3",
     "rehype-stringify": "^10.0.1",
     "remark-parse": "^11.0.0",
@@ -76,6 +79,7 @@
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs}": [
       "oxlint --fix",
+      "eslint --fix --max-warnings 0",
       "prettier --write"
     ],
     "*.{json,md,css,yml,yaml}": [

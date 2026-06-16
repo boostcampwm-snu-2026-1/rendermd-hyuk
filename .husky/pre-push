@@ -1,0 +1,31 @@
+# Full validation pipeline before push — same gates CI will run, but
+# locally so a red CI build never blocks the PR.
+#
+# L1: format. L2: tsc + eslint full. L3: convention rules embedded in
+# eslint config. L4: full unit suite. L5: knip dead-code.
+#
+# Skip with SKIP_PREPUSH=1 git push for WIP branches.
+if [ "$SKIP_PREPUSH" = "1" ]; then
+  echo "[pre-push] SKIP_PREPUSH=1 → skipping validation"
+  exit 0
+fi
+
+echo "[pre-push] format:check (L1)"
+pnpm format:check || exit 1
+
+echo "[pre-push] lint:oxlint (L2 fast pass)"
+pnpm lint:oxlint || exit 1
+
+echo "[pre-push] lint (L2/L3 full, --max-warnings 0)"
+pnpm lint --max-warnings 0 || exit 1
+
+echo "[pre-push] typecheck (L2)"
+pnpm typecheck || exit 1
+
+echo "[pre-push] test:run (L4)"
+pnpm test:run || exit 1
+
+echo "[pre-push] knip (L5)"
+pnpm knip || exit 1
+
+echo "[pre-push] all gates green — pushing"
