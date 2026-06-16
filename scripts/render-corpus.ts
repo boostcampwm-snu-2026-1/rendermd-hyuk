@@ -2,32 +2,49 @@
  * Render-corpus harness.
  *
  * Paste each markdown fixture under scripts/fixtures/ into the running
- * site, capture a screenshot, and assert minimum render counts (KaTeX
- * displays, hljs code blocks, page-break markers). Used both by the
- * naive-client agent during PR review (see workflow.md §3.A) and as a
- * CI guard against rendering regressions.
+ * site, capture a screenshot, and assert:
+ *   - DOM render counts (KaTeX displays, hljs blocks, page-break markers)
+ *   - Zero console / pageerror noise (when noConsoleErrors)
+ *   - L6 visual regression against committed baselines (pixelmatch)
+ *
+ * Used both by the naive-client agent during PR review (see
+ * workflow.md §3.A) and as a CI guard against rendering regressions.
  *
  * Usage:
- *   pnpm dlx tsx scripts/render-corpus.ts                          # live URL
+ *   pnpm dlx tsx scripts/render-corpus.ts                            # live URL
  *   SITE=http://localhost:8080 pnpm dlx tsx scripts/render-corpus.ts
+ *   UPDATE_BASELINE=1 SITE=… pnpm dlx tsx scripts/render-corpus.ts   # accept current as baseline
  *
  * Per-fixture expectations live in the EXPECTATIONS table below, keyed
  * by file basename. To add a new fixture: drop it under fixtures/ and
- * add a row. Defaults (all zeros) apply for unlisted fixtures.
- *
- * A `noConsoleErrors: true` row also requires zero browser-console
- * errors during render — catches things like KaTeX parse failures
- * that would otherwise look fine in a screenshot.
+ * add a row. Defaults (all zeros + DEFAULT_MAX_DIFF_PCT) apply for
+ * unlisted fixtures.
  */
 
 import { chromium, type Page } from 'playwright';
-import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import pixelmatch from 'pixelmatch';
+import { PNG } from 'pngjs';
 
 const DEFAULT_SITE = 'https://boostcampwm-snu-2026-1.github.io/rendermd-hyuk/';
 const SITE = process.env.SITE ?? DEFAULT_SITE;
 const FIXTURES_DIR = path.resolve(process.cwd(), 'scripts/fixtures');
 const OUT_DIR = path.resolve(process.cwd(), 'docs/screenshots/corpus');
+const BASELINE_DIR = path.resolve(process.cwd(), 'docs/screenshots/corpus-baseline');
+// 6% of pixels different is the per-fixture cap — covers font
+// anti-aliasing variance between a developer's machine (where
+// baselines are usually seeded) and the CI runner. Empirically, CI vs
+// local WSL Ubuntu chromium drifts up to ~5% for text-heavy fixtures
+// purely from sub-pixel font hinting; tighter caps fire on every PR.
+// Override per-fixture (e.g. tighter for layout-only screens, looser
+// for Korean/CJK-heavy ones) via EXPECTATIONS.maxDiffPct.
+const DEFAULT_MAX_DIFF_PCT = 0.06;
+// Per-channel color sensitivity. 0.1 is pixelmatch's default.
+const PIXELMATCH_THRESHOLD = 0.1;
+// Set UPDATE_BASELINE=1 to write the current screenshot as the new
+// baseline instead of comparing. Use after intentional visual changes.
+const UPDATE_BASELINE = process.env.UPDATE_BASELINE === '1';
 
 // Loud warn when SITE wasn't set explicitly — otherwise a local "no
 // regressions" pass actually proved nothing about the working tree.
@@ -53,6 +70,13 @@ interface Expect {
   noConsoleErrors?: boolean;
   /** Skip render-count assertions entirely (use for empty / smoke). */
   smokeOnly?: boolean;
+  /**
+   * Max fraction of pixels allowed to differ from the baseline (L6
+   * visual regression). Defaults to {@link DEFAULT_MAX_DIFF_PCT}. Skip
+   * the diff entirely by setting to `Infinity` (e.g., for fixtures
+   * whose rendering is intentionally non-deterministic).
+   */
+  maxDiffPct?: number;
 }
 
 const EXPECTATIONS: Record<string, Expect> = {
@@ -96,6 +120,12 @@ const EXPECTATIONS: Record<string, Expect> = {
   },
 };
 
+interface VisualResult {
+  status: 'ok' | 'diff' | 'no-baseline' | 'updated' | 'skipped';
+  diffPct?: number;
+  diffPath?: string;
+}
+
 interface FixtureResult {
   name: string;
   pass: boolean;
@@ -106,8 +136,45 @@ interface FixtureResult {
     pageBreaks: number;
     errors: string[];
   };
+  visual?: VisualResult;
   expected: Expect;
   reason?: string;
+}
+
+/**
+ * L6 visual regression: compare current screenshot against the
+ * committed baseline using per-pixel diff. Writes a diff PNG when the
+ * fixture exceeds its tolerance so reviewers can see what changed.
+ *
+ * - First run on a new fixture has no baseline → returns 'no-baseline'.
+ *   Run with UPDATE_BASELINE=1 to populate.
+ * - Set maxDiffPct=Infinity to skip the diff for intentionally
+ *   non-deterministic fixtures.
+ */
+function compareVisual(name: string, currentPath: string, maxDiffPct: number): VisualResult {
+  if (maxDiffPct === Infinity) return { status: 'skipped' };
+  const baselinePath = path.join(BASELINE_DIR, name.replace(/\.md$/, '.png'));
+  if (UPDATE_BASELINE) {
+    mkdirSync(BASELINE_DIR, { recursive: true });
+    writeFileSync(baselinePath, readFileSync(currentPath));
+    return { status: 'updated' };
+  }
+  if (!existsSync(baselinePath)) return { status: 'no-baseline' };
+  const baseline = PNG.sync.read(readFileSync(baselinePath));
+  const current = PNG.sync.read(readFileSync(currentPath));
+  if (baseline.width !== current.width || baseline.height !== current.height) {
+    return { status: 'diff', diffPct: 1 };
+  }
+  const { width, height } = baseline;
+  const diff = new PNG({ width, height });
+  const mismatched = pixelmatch(baseline.data, current.data, diff.data, width, height, {
+    threshold: PIXELMATCH_THRESHOLD,
+  });
+  const diffPct = mismatched / (width * height);
+  if (diffPct <= maxDiffPct) return { status: 'ok', diffPct };
+  const diffPath = path.join(OUT_DIR, name.replace(/\.md$/, '.diff.png'));
+  writeFileSync(diffPath, PNG.sync.write(diff));
+  return { status: 'diff', diffPct, diffPath };
 }
 
 async function loadFixture(p: Page, body: string) {
@@ -191,11 +258,29 @@ async function main() {
     const m = await measure(page);
     const observed = { ...m, errors: [...errors] };
     const exp = expectations(name);
-    const { pass, reason } = evaluate(name, observed, exp);
-    results.push({ name, pass, observed, expected: exp, reason });
+    const countCheck = evaluate(name, observed, exp);
     const file = path.join(OUT_DIR, name.replace(/\.md$/, '.png'));
     await page.screenshot({ path: file, fullPage: false });
-    console.log(`${pass ? '✓' : '✗'} ${name}  ${pass ? '' : `— ${reason}`}`);
+    // L6 visual diff against committed baseline.
+    const visual = compareVisual(name, file, exp.maxDiffPct ?? DEFAULT_MAX_DIFF_PCT);
+    const visualFail =
+      visual.status === 'diff'
+        ? `visual diff ${(visual.diffPct! * 100).toFixed(2)}%${visual.diffPath ? ` (see ${path.relative(process.cwd(), visual.diffPath)})` : ''}`
+        : null;
+    const pass = countCheck.pass && !visualFail;
+    const reason = [countCheck.reason, visualFail].filter(Boolean).join('; ') || undefined;
+    results.push({ name, pass, observed, visual, expected: exp, reason });
+    const visualTag =
+      visual.status === 'no-baseline'
+        ? ' (no visual baseline — run UPDATE_BASELINE=1 to seed)'
+        : visual.status === 'updated'
+          ? ' (visual baseline updated)'
+          : visual.status === 'skipped'
+            ? ''
+            : visual.status === 'ok'
+              ? ` (visual ${(visual.diffPct! * 100).toFixed(2)}% diff)`
+              : '';
+    console.log(`${pass ? '✓' : '✗'} ${name}${visualTag}${pass ? '' : `  — ${reason}`}`);
   }
 
   // Persist a JSON summary so CI / agents can diff over runs.

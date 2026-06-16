@@ -1,1 +1,15 @@
-pnpm exec lint-staged
+# L1 (format) + L2/L3 (lint) on staged files only — fast feedback.
+pnpm exec lint-staged || exit 1
+
+# L2 (full typecheck, incremental cache). Catches downstream type
+# breakage that staged-only check would miss. Warm cache makes this
+# ~1-3s after the first run.
+pnpm exec tsc --noEmit || exit 1
+
+# L4 (unit test) — only tests related to staged source files. Uses
+# vitest's `related` mode + the module graph to skip everything else.
+# Empty staged set is a no-op.
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx|mjs)$' | tr '\n' ' ')
+if [ -n "$STAGED" ]; then
+  pnpm exec vitest related $STAGED --run || exit 1
+fi

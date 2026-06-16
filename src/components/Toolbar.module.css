@@ -90,4 +90,20 @@
   .group:not(:first-child)::before {
     display: none;
   }
+  /* Tighten the gap so more buttons fit before the viewport edge. With
+     12 buttons + 3 group seams the default --space-3 gap leaves the
+     rightmost two (blockquote, link) off-screen on a 390 px viewport;
+     2 px gap restores ~50 px of horizontal room. */
+  .toolbar {
+    gap: 2px;
+    padding: 0 var(--space-2);
+  }
+  /* Right-edge fade hints at horizontal-scrollable content when the
+     row still overflows after the gap shrink. Without this, users see
+     a clean cut at the viewport edge and don't realise more controls
+     are reachable by swipe. */
+  .toolbar {
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 16px), transparent);
+    mask-image: linear-gradient(to right, black calc(100% - 16px), transparent);
+  }
 }

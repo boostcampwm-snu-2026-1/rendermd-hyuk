@@ -129,6 +129,13 @@
   .hint {
     display: none;
   }
+  /* WCAG 2.5.5 AAA tap-target on mobile, where the save-failed retry is
+     hardest to hit reliably. Desktop keeps the compact 28×28 since
+     pointer accuracy is fine and the row needs to stay slim. */
+  .retryBtn {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 /*

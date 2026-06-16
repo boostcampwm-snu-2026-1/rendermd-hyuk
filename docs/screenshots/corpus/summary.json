@@ -1,5 +1,5 @@
 {
-  "site": "https://boostcampwm-snu-2026-1.github.io/rendermd-hyuk/",
+  "site": "http://localhost:4173/",
   "results": [
     {
       "name": "01-math-mixed-delimiters.md",
@@ -10,6 +10,10 @@
         "hljs": 0,
         "pageBreaks": 0,
         "errors": []
+      },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
       },
       "expected": {
         "katexDisplay": 4,
@@ -27,6 +31,10 @@
         "pageBreaks": 0,
         "errors": []
       },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
+      },
       "expected": {
         "hljs": 3,
         "noConsoleErrors": true
@@ -42,6 +50,10 @@
         "pageBreaks": 0,
         "errors": []
       },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
+      },
       "expected": {
         "noConsoleErrors": true
       }
@@ -55,6 +67,10 @@
         "hljs": 0,
         "pageBreaks": 0,
         "errors": []
+      },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
       },
       "expected": {
         "katexDisplay": 1,
@@ -71,6 +87,10 @@
         "pageBreaks": 0,
         "errors": []
       },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
+      },
       "expected": {
         "katexAny": 1,
         "noConsoleErrors": true
@@ -86,6 +106,10 @@
         "pageBreaks": 0,
         "errors": []
       },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
+      },
       "expected": {
         "noConsoleErrors": true
       }
@@ -99,6 +123,10 @@
         "hljs": 0,
         "pageBreaks": 3,
         "errors": []
+      },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
       },
       "expected": {
         "pageBreaks": 3,
@@ -115,6 +143,10 @@
         "pageBreaks": 0,
         "errors": []
       },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
+      },
       "expected": {
         "smokeOnly": true
       }
@@ -129,6 +161,10 @@
         "pageBreaks": 0,
         "errors": []
       },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
+      },
       "expected": {
         "noConsoleErrors": true
       }
@@ -142,6 +178,10 @@
         "hljs": 1,
         "pageBreaks": 0,
         "errors": []
+      },
+      "visual": {
+        "status": "ok",
+        "diffPct": 0
       },
       "expected": {
         "noConsoleErrors": true

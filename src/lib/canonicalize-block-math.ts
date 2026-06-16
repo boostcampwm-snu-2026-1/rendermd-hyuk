@@ -61,10 +61,11 @@ function transformTextChunk(text: string): string {
   return parts.join('');
 }
 
-// Non-greedy pair match of $$...$$ that can span newlines. The negative
-// lookbehind / lookahead prevent matching `$$$` runs, but in practice
-// LLM output uses exactly `$$`, so the simple form is fine.
-const BLOCK_MATH_PAIR = /\$\$([\s\S]+?)\$\$/g;
+// Non-greedy pair match of $$...$$ that can span newlines. Inner
+// length is capped at 16384 to match editor-math-decoration's
+// RE_BLOCK_DOLLAR — a single unclosed `$$` should not drag the engine
+// across megabytes of pasted text.
+const BLOCK_MATH_PAIR = /\$\$([\s\S]{1,16384}?)\$\$/g;
 const HAS_ENV = /\\(?:begin|end)\{/;
 
 function rewriteMath(segment: string): string {

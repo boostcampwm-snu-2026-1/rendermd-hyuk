@@ -72,7 +72,6 @@ export function ExportButton() {
         className={styles.button}
         onClick={handleClick}
         disabled={preparing}
-        aria-label="Export as PDF"
         aria-busy={preparing || undefined}
       >
         {preparing ? (
