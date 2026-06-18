@@ -61,7 +61,7 @@
     "jsdom": "^29.1.1",
     "knip": "^6.16.1",
     "lint-staged": "^17.0.7",
-    "oxlint": "^1.69.0",
+    "oxlint": "^1.70.0",
     "playwright": "^1.60.0",
     "prettier": "^3.3.3",
     "rehype-stringify": "^10.0.1",
